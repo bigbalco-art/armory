@@ -1,0 +1,2547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Armory — Navy & White</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script>
+  // Wait for scripts to fully load before initializing
+  function initFirebase() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyDw95urlhjKkXqBcj4LNgkHpmWydFsHLR0",
+      authDomain: "firearm-inventory-5d0be.firebaseapp.com",
+      projectId: "firearm-inventory-5d0be",
+      storageBucket: "firearm-inventory-5d0be.firebasestorage.app",
+      messagingSenderId: "1060866359048",
+      appId: "1:1060866359048:web:6373c8ba96e8236b9176bd"
+    };
+
+  try {
+    if(typeof firebase === 'undefined') throw new Error('Firebase SDK not loaded');
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const DOC_REF = db.collection("armory").doc("inventory");
+
+    window._fbSave = async function(dataArr) {
+      try {
+        // Strip photos before saving to Firebase (too large for Firestore 1MB limit)
+        // Photos are kept in localStorage only
+        const dataNoPhotos = dataArr.map(d => {
+          const copy = Object.assign({}, d);
+          if(copy.photo && copy.photo.length > 1000) delete copy.photo;
+          return copy;
+        });
+        await DOC_REF.set({ data: dataNoPhotos, updated: new Date().toISOString() });
+        return true;
+      } catch(e) {
+        console.error("Firebase save error:", e);
+        return false;
+      }
+    };
+
+    window._fbLoad = async function() {
+      try {
+        const snap = await DOC_REF.get();
+        if(snap.exists) {
+          const d = snap.data();
+          console.log("Firebase loaded, entry count:", (d.data||[]).length);
+          return d.data || [];
+        }
+        console.log("Firebase doc does not exist");
+        return null;
+      } catch(e) {
+        console.error("Firebase load error:", e);
+        return null;
+      }
+    };
+
+    window._fbListen = function(callback) {
+      return DOC_REF.onSnapshot((snap) => {
+        if(snap.exists) callback(snap.data().data || []);
+      });
+    };
+
+    window._fbReady = true;
+    console.log("Firebase initialized successfully");
+    document.dispatchEvent(new Event('firebase-ready'));
+  } catch(e) {
+    console.error("Firebase init error:", e);
+    window._fbReady = false;
+    document.dispatchEvent(new Event('firebase-ready'));
+  }
+  } // end initFirebase
+
+  // Run after DOM is ready to ensure scripts are loaded
+  if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFirebase);
+  } else {
+    initFirebase();
+  }
+</script>
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface2: #e8ebf0;
+    --border: #d0d5dd;
+    --accent: #1c3557;
+    --accent2: #2563a8;
+    --red: #c0392b;
+    --text: #111827;
+    --muted: #6b7280;
+    --green: #166534;
+    --purple: #5b21b6;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    font-size: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .top-panel {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 20;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+  }
+  /* HEADER */
+  .header {
+    background: var(--accent);
+    border-bottom: 2px solid #122440;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: baseline; gap: 16px; }
+  .logo {
+    font-family: 'Inter', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 4px;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .logo-sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 9px;
+    font-weight: 300;
+    color: #c9a84c;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .stats {
+    display: flex;
+    gap: 24px;
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'Inter', serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: #c9a84c;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 9px;
+    color: rgba(255,255,255,0.55);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+  }
+  /* TOOLBAR */
+  .toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .toolbar-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn-sm {
+    padding: 6px 11px;
+    font-size: 12px;
+  }
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 320px;
+  }
+  .search-wrap input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px 8px 34px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 14px;
+  }
+  select, .toolbar select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+  .btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-accent {
+    background: var(--accent);
+    color: #ffffff;
+  }
+  .btn-accent:hover { background: var(--accent2); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid var(--red);
+  }
+  .btn-danger:hover { background: var(--red); color: #fff; }
+  /* TABLE */
+  .table-wrap {
+    overflow-x: auto;
+    padding: 0 8px 32px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    min-width: 1100px;
+    border: 1px solid #9aaabf;
+  }
+  thead th {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--accent);
+    padding: 10px 10px;
+    text-align: left;
+    border-bottom: 3px solid #7a8fa8;
+    border-right: 1px solid #9aaabf;
+    background: #d8e1ed;
+    position: sticky;
+    top: 0;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    z-index: 10;
+  }
+  thead th:last-child { border-right: none; }
+  thead th:hover { color: var(--accent2); background: #c8d4e6; }
+  thead th.sorted { color: var(--accent2); }
+  tbody tr {
+    border-bottom: 1px solid #b0bccf;
+    transition: background 0.1s;
+  }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td {
+    padding: 8px 10px;
+    vertical-align: middle;
+    max-width: 280px;
+    border-right: 1px solid #c5cedd;
+  }
+  tbody td:last-child { border-right: none; }
+  .td-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    width: 28px;
+    padding-left: 6px !important;
+    padding-right: 4px !important;
+  }
+  .firearm-name {
+    font-weight: 500;
+    font-size: 13.5px;
+    color: var(--text);
+  }
+  .firearm-desc {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-family: 'DM Mono', monospace;
+    line-height: 1.4;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+  }
+  .badge-owned { background: rgba(30,126,74,0.1); color: var(--green); border: 1px solid rgba(30,126,74,0.25); }
+  .badge-want { background: rgba(30,58,95,0.08); color: var(--accent); border: 1px solid rgba(30,58,95,0.2); }
+  .badge-priority { background: rgba(106,61,154,0.1); color: var(--purple); border: 1px solid rgba(106,61,154,0.25); }
+  .badge-new { background: rgba(46,109,164,0.1); color: var(--accent2); border: 1px solid rgba(46,109,164,0.25); }
+  .location-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .editable {
+    outline: none;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    width: 100%;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .editable:focus {
+    border-color: var(--accent);
+    background: var(--bg);
+  }
+  .editable::placeholder { color: var(--muted); font-size: 12px; }
+  .pic-needed {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .upc-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .upc-btn:hover { border-color: var(--accent2); color: var(--accent2); background: #eef4fb; }
+  .upc-cell { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+  .upc-val { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+  .loading-spin {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(30,58,95,0.35);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--accent);
+    border-radius: 12px;
+    padding: 28px 32px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  }
+  .modal h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+  }
+  /* LEGEND */
+  .legend {
+    padding: 8px 16px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--accent);
+    border: none;
+    color: #ffffff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 300;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(30,58,95,0.3);
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .col-actions { width: 60px; }
+  .inline-edit-cell {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    min-height: 24px;
+    border-radius: 4px;
+    padding: 2px 4px;
+    transition: background 0.15s;
+  }
+  .inline-edit-cell:hover { background: var(--surface2); }
+  .inline-edit-icon { font-size: 10px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
+  .inline-edit-cell:hover .inline-edit-icon { opacity: 1; }
+  .inline-textarea { width: 100%; min-width: 140px; resize: vertical; font-size: 12px; }
+  .inline-val { font-size: 12px; color: var(--text); }
+  .inline-val:empty::before { content: "Click to add"; color: var(--muted); font-style: italic; font-size: 11px; }
+  .sort-arrow { font-size: 11px; color: var(--accent2); }
+  .inline-select {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 4px;
+    padding: 3px 6px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    width: 100%;
+  }
+  .inline-select:hover, .inline-select:focus { border-color: var(--border); background: var(--bg); }
+  .status-select { min-width: 120px; width: auto; }
+  .location-select { min-width: 160px; width: auto; }
+  .row-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: color 0.15s;
+    line-height: 1;
+  }
+  .icon-btn:hover { color: var(--accent); }
+  .icon-btn.del:hover { color: var(--red); }
+  .price-history { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; line-height: 1.5; max-width: 200px; }
+  .notes-cell { font-size: 12px; color: var(--muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .thumb-cell { width: 64px; text-align: center; }
+  .thumb-img { width:56px; height:44px; object-fit:cover; border-radius:5px; border:1px solid var(--border); display:block; cursor:pointer; }
+  .thumb-placeholder { width:56px; height:44px; border:2px dashed var(--border); border-radius:5px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--muted); font-size:18px; transition:border-color 0.15s; }
+  .thumb-placeholder:hover { border-color:var(--accent2); color:var(--accent2); }
+  .serial-input { font-family:'JetBrains Mono',monospace; font-size:12px; filter:blur(5px); transition:filter 0.2s; width:120px; }
+  .serial-input:focus, .serial-input:hover { filter:blur(0); }
+  .serial-wrap { position:relative; }
+  .serial-wrap::after { content:"🔒"; position:absolute; right:4px; top:50%; transform:translateY(-50%); font-size:11px; pointer-events:none; }
+
+
+
+
+  /* ─── Custom Type Combo Box ─────────────────────────────── */
+  .combo-wrap {
+    position: relative;
+    width: 130px;
+  }
+  .combo-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 24px 4px 8px;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+  .combo-input:focus { border-color: var(--accent); }
+  .combo-arrow {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .combo-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 160px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    z-index: 999;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .combo-dropdown.open { display: block; }
+  .combo-option {
+    padding: 7px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .combo-option:last-child { border-bottom: none; }
+  .combo-option:hover, .combo-option.highlighted { background: var(--surface2); color: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<div class="top-panel">
+<div class="header">
+  <div class="header-left">
+    <div class="logo">ARMORY</div>
+    <div class="logo-sub">Personal Firearm Registry</div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-num" id="stat-owned">0</div><div class="stat-label">Own</div></div>
+    <div class="stat"><div class="stat-num" id="stat-want">0</div><div class="stat-label">Want</div></div>
+    <div class="stat"><div class="stat-num" id="stat-pic">0</div><div class="stat-label">Need Pic</div></div>
+    <div class="stat"><div class="stat-num" id="stat-invest" style="font-size:16px;">$0</div><div class="stat-label">Invested</div></div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="badge badge-owned">●</span> Own</div>
+  <div class="legend-item"><span class="badge badge-new">●</span> Not Yet in Master List</div>
+  <div class="legend-item"><span class="badge badge-priority">●</span> High Priority</div>
+  <div class="legend-item"><span class="badge badge-want">●</span> Want</div>
+  <div class="legend-item"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#2563a8;"></span> Photo Needed</div>
+</div>
+
+<div class="toolbar">
+  <div class="toolbar-row">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Search firearms..." oninput="filterTable()">
+    </div>
+    <select id="filterStatus" onchange="filterTable()">
+      <option value="">All Status</option>
+      <option value="owned">Own</option>
+      <option value="want">Want</option>
+      <option value="priority">High Priority</option>
+      <option value="new">Not in Master List</option>
+    </select>
+    <select id="filterLocation" onchange="filterTable()">
+      <option value="">All Locations</option>
+      <option value="USC">Upstairs Closet (USC)</option>
+      <option value="DSC">Downstairs Closet (DSC)</option>
+      <option value="GC">Guest Room Closet (GC)</option>
+    </select>
+    <select id="filterPic" onchange="filterTable()">
+      <option value="">All Pictures</option>
+      <option value="yes">Need Pic</option>
+      <option value="no">Have Pic</option>
+    </select>
+    <select id="filterUpcMpn" onchange="filterTable()">
+      <option value="">All UPC/MPN</option>
+      <option value="has_both">Has UPC &amp; MPN</option>
+      <option value="has_upc">Has UPC only</option>
+      <option value="has_mpn">Has MPN only</option>
+      <option value="missing_upc">Missing UPC</option>
+      <option value="missing_mpn">Missing MPN</option>
+      <option value="missing_both">Missing Both</option>
+    </select>
+  </div>
+  <div class="toolbar-row">
+    <button class="btn btn-accent" onclick="openAddModal()">+ Add Firearm</button>
+    <button class="btn btn-ghost btn-sm" onclick="saveAll()">💾 Save</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ CSV</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportJSON()">⬇ Backup</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFileInput').click()">⬆ Restore</button>
+    <button class="btn btn-ghost btn-sm" onclick="startBulkLookup()" id="bulkLookupBtn" title="Auto-fill missing manufacturer, type & caliber for all entries with UPC or MPN">⚡ Bulk Lookup</button>
+    <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importJSON(this)">
+  </div>
+</div>
+</div><!-- end top-panel -->
+
+<div class="scroll-area">
+<div class="table-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th class="td-num" onclick="sortTable('num')" id="th-num"># <span class="sort-arrow"></span></th>
+        <th class="thumb-cell">Photo</th>
+        <th onclick="sortTable('manufacturer')" id="th-manufacturer">Manufacturer <span class="sort-arrow"></span></th>
+        <th onclick="sortTable('name')" id="th-name">Firearm Name <span class="sort-arrow"></span></th>
+        <th>Status</th>
+        <th>Location</th>
+        <th>UPC</th>
+        <th>MPN</th>
+        <th onclick="sortTable('type')" id="th-type">Type <span class="sort-arrow"></span></th>
+        <th onclick="sortTable('caliber')" id="th-caliber">Caliber <span class="sort-arrow"></span></th>
+        <th>Serial #</th>
+        <th onclick="sortTable('purchasePrice')" id="th-purchasePrice">Purchase Price <span class="sort-arrow"></span></th>
+        <th onclick="sortTable('purchaseDate')" id="th-purchaseDate">Purchase Date <span class="sort-arrow"></span></th>
+        <th>Most Recent Price</th>
+        <th>Notes</th>
+        <th>Picture</th>
+        <th class="col-actions">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<!-- IMPORT CONFIRM MODAL -->
+<div class="modal-overlay" id="importConfirmOverlay">
+  <div class="modal" style="max-width:460px;">
+    <h2 style="font-size:18px;margin-bottom:6px;">RESTORE BACKUP</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:18px;">Found <strong id="importConfirmCount" style="color:var(--text);">0 entries</strong> in backup file. How would you like to restore?</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;">
+        <div style="font-weight:600;font-size:13px;margin-bottom:4px;">Replace All</div>
+        <div style="font-size:12px;color:var(--muted);">Wipes current data and loads the backup. Use this to fully restore from a backup file.</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;">
+        <div style="font-weight:600;font-size:13px;margin-bottom:4px;">Merge</div>
+        <div style="font-size:12px;color:var(--muted);">Adds new entries from the backup without removing anything you already have.</div>
+      </div>
+    </div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn btn-ghost" onclick="resolveImportConfirm('cancel')">Cancel</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="resolveImportConfirm('merge')">Merge</button>
+        <button class="btn btn-accent" onclick="resolveImportConfirm('replace')">Replace All</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- end scroll-area -->
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-overlay" id="deleteConfirmOverlay">
+  <div class="modal" style="max-width:420px;">
+    <h2 style="font-size:18px;margin-bottom:16px;color:var(--red);">CONFIRM DELETE</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">You are about to permanently delete:</p>
+    <div id="deleteConfirmName" style="background:var(--bg);border:2px solid var(--red);border-radius:6px;padding:10px 14px;font-size:14px;font-weight:600;color:var(--text);margin-bottom:20px;"></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:20px;">This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="resolveDeleteConfirm(false)">Cancel</button>
+      <button class="btn btn-danger" onclick="resolveDeleteConfirm(true)">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAME CONFIRM MODAL -->
+<div class="modal-overlay" id="nameConfirmOverlay">
+  <div class="modal" style="max-width:480px;">
+    <h2 style="font-size:18px;margin-bottom:16px;">UPDATE FIREARM NAME?</h2>
+    <p style="font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">CURRENT NAME</p>
+    <div id="nameOld" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:14px;color:var(--text);margin-bottom:14px;"></div>
+    <p style="font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">OFFICIAL NAME FOUND</p>
+    <div id="nameNew" style="background:var(--bg);border:2px solid var(--accent2);border-radius:6px;padding:10px 14px;font-size:14px;font-weight:600;color:var(--accent);margin-bottom:20px;"></div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn btn-accent" onclick="resolveNameConfirm(true)">Use Official Name</button>
+      <button class="btn btn-ghost" onclick="resolveNameConfirm(false)">Keep Current Name</button>
+      <button class="btn btn-danger" onclick="resolveNameConfirm('cancel')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" style="max-width:680px;">
+    <h2 id="modalTitle">ADD FIREARM</h2>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+
+      <!-- PHOTO -->
+      <div class="form-group full" style="display:flex;align-items:center;gap:16px;">
+        <div id="fPhotoPreview" style="width:80px;height:64px;border:2px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;flex-shrink:0;overflow:hidden;" onclick="document.getElementById('fPhotoFile').click()">📷</div>
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;">Photo</div>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('fPhotoFile').click()">Upload Photo</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="fPhotoRemoveBtn" style="display:none;color:var(--red);" onclick="clearModalPhoto()">Remove</button>
+          <input type="file" id="fPhotoFile" accept="image/*" style="display:none" onchange="previewModalPhoto(this)">
+          <input type="hidden" id="fPhotoData">
+        </div>
+      </div>
+
+      <!-- ROW: Manufacturer + Firearm Name -->
+      <div class="form-group">
+        <label>Manufacturer</label>
+        <input type="text" id="fManufacturer" placeholder="e.g. Glock, Colt, S&amp;W">
+      </div>
+      <div class="form-group">
+        <label>Firearm Name *</label>
+        <input type="text" id="fName" placeholder="e.g. Colt Python SS 4.25&quot;">
+      </div>
+
+      <!-- ROW: Status + Location -->
+      <div class="form-group">
+        <label>Status</label>
+        <select id="fStatus">
+          <option value="want">Want</option>
+          <option value="owned">Own</option>
+          <option value="priority">High Priority Want</option>
+          <option value="new">Not Yet in Master List</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Location</label>
+        <select id="fLocation">
+          <option value="">-- Select --</option>
+          <option value="USC">Upstairs Closet (USC)</option>
+          <option value="DSC">Downstairs Closet (DSC)</option>
+          <option value="GC">Guest Room Closet (GC)</option>
+          <option value="NS">Not Stored</option>
+          <option value="O">Other</option>
+        </select>
+      </div>
+
+      <!-- ROW: UPC + MPN -->
+      <div class="form-group">
+        <label>UPC</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="fUPC" placeholder="12-digit barcode"
+            style="flex:1;font-family:'JetBrains Mono',monospace;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:6px;font-size:13px;outline:none;" />
+          <button type="button" class="btn btn-ghost btn-sm" onclick="manualLookup('upc')">🔍 Search</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>MPN</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="fMPN" placeholder="e.g. M4LE11715"
+            style="flex:1;font-family:'JetBrains Mono',monospace;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:6px;font-size:13px;outline:none;" />
+          <button type="button" class="btn btn-ghost btn-sm" onclick="manualLookup('mpn')">🔍 Search</button>
+        </div>
+      </div>
+
+      <!-- ROW: Type + Caliber -->
+      <div class="form-group">
+        <label>Type</label>
+        <input type="text" id="fGunType" list="gunTypeListModal" placeholder="e.g. Handgun, Rifle...">
+        <datalist id="gunTypeListModal">
+          <option value="Handgun"><option value="Revolver"><option value="Rifle">
+          <option value="Shotgun"><option value="Bolt Action"><option value="Lever Action">
+          <option value="Bullpup"><option value="PCC"><option value="AR Pistol">
+          <option value="Suppressor"><option value="Optic"><option value="Accessory"><option value="Other">
+        </datalist>
+      </div>
+      <div class="form-group">
+        <label>Caliber</label>
+        <input type="text" id="fCaliber" placeholder="e.g. 9mm, .45 ACP, 12 Gauge">
+      </div>
+
+      <!-- ROW: Purchase Price + Purchase Date -->
+      <div class="form-group">
+        <label>Purchase Price</label>
+        <div style="display:flex;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+          <span style="padding:9px 8px;color:var(--muted);font-size:14px;font-weight:600;background:var(--surface2);border-right:1px solid var(--border);user-select:none;">$</span>
+          <input type="number" id="fPurchasePrice" placeholder="0.00" step="0.01"
+            style="flex:1;border:none;border-radius:0;padding:9px 10px;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Purchase Date</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="fPurchaseDateText" placeholder="MM/DD/YYYY or M/D/YY"
+            style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:6px;font-family:'JetBrains Mono',sans-serif;font-size:13px;outline:none;" />
+          <div style="position:relative;display:inline-block;">
+            <button type="button" title="Pick from calendar"
+              style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:9px 10px;cursor:pointer;font-size:16px;line-height:1;position:relative;z-index:1;">📅</button>
+            <input type="date" id="fPurchaseDateCalHid"
+              style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;"
+              onchange="document.getElementById('fPurchaseDateText').value=toDisplayDate(this.value);" />
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW: Serial # + Need Photo -->
+      <div class="form-group">
+        <label>Serial #</label>
+        <input type="text" id="fSerial" placeholder="Serial number" autocomplete="off"
+          style="font-family:'JetBrains Mono',monospace;">
+      </div>
+      <div class="form-group">
+        <label>Picture Status</label>
+        <select id="fNeedPic">
+          <option value="yes">Need Photo</option>
+          <option value="no">Have Photo</option>
+        </select>
+      </div>
+
+      <!-- ROW: Price History (full width) -->
+      <div class="form-group full">
+        <label>Price History</label>
+        <textarea id="fPriceHistory" rows="2" placeholder="Most recent price first, e.g. $1249, $1300, $1275..."></textarea>
+      </div>
+
+      <!-- ROW: Notes (full width) -->
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea id="fDesc" rows="2" placeholder="Additional notes, variants, observations..."></textarea>
+      </div>
+
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="saveEntry()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+
+<!-- BULK LOOKUP PROGRESS MODAL -->
+<div class="modal-overlay" id="bulkProgressOverlay">
+  <div class="modal" style="max-width:460px;">
+    <h2 style="font-size:18px;margin-bottom:6px;">⚡ BULK LOOKUP</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;" id="bulkStatusText">Starting...</p>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;height:12px;overflow:hidden;margin-bottom:16px;">
+      <div id="bulkProgressBar" style="height:100%;background:var(--accent2);width:0%;transition:width 0.3s;border-radius:8px;"></div>
+    </div>
+    <div id="bulkResultLog" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);max-height:200px;overflow-y:auto;margin-bottom:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="bulkCancelBtn" onclick="cancelBulkLookup()">Cancel</button>
+      <button class="btn btn-accent" id="bulkDoneBtn" style="display:none;" onclick="document.getElementById('bulkProgressOverlay').classList.remove('open')">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Data ───────────────────────────────────────────────────────
+const STORAGE_KEY = 'armory_v2';
+
+// ─── AI Lookup — Gemini Direct ──────────────────────────────
+const GEMINI_KEY = "AIzaSyApJQIYJAPHnP_F7Q6iYxQAdfjc3l2h_NY";
+let _aiSearching = false;
+
+async function callClaude(prompt) {
+  const sysPrompt = "You are a product database assistant. You look up product specifications by UPC barcode or model number. Return ONLY a raw JSON object with no other text.";
+  
+  // Try gemini-2.0-flash first
+  const models = [
+    "gemini-2.0-flash-lite-001",
+    "gemini-2.0-flash-001",
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-flash"
+  ];
+  
+  for(const model of models) {
+    try {
+      showToast("🔍 Looking up via Gemini...");
+      const r = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + GEMINI_KEY,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: sysPrompt + "\n\n" + prompt }] }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 500,
+              responseMimeType: "application/json"
+            },
+            safetySettings: [
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
+            ]
+          })
+        }
+      );
+      
+      if(!r.ok) {
+        const err = await r.json().catch(()=>({}));
+        const errMsg = err?.error?.message || err?.error?.status || ("HTTP " + r.status);
+        console.warn(model + " error:", errMsg);
+        if(r.status === 400 && errMsg.includes("API_KEY_HTTP_REFERRER_BLOCKED")) {
+          throw new Error("Key restricted — add your site to Google Cloud Console restrictions");
+        }
+        if(r.status === 403) throw new Error("Gemini key invalid or quota exceeded");
+        continue;
+      }
+      
+      const j = await r.json();
+      let t = (j.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
+      // Strip all markdown fences and whitespace
+      t = t.replace(/```json/g,"").replace(/```/g,"").trim();
+      // Remove any leading text before the JSON
+      const a = t.indexOf("{"), b = t.lastIndexOf("}");
+      if(a !== -1 && b !== -1) {
+        const jsonStr = t.slice(a, b+1);
+        try {
+          JSON.parse(jsonStr);
+          console.log("✅ Gemini success:", model);
+          return jsonStr;
+        } catch(e) {
+          console.warn(model + " bad JSON:", t.substring(0,100));
+        }
+      }
+    } catch(e) {
+      console.warn(model + " error:", e.message);
+    }
+  }
+  
+  throw new Error("Gemini lookup failed. Check internet connection.");
+}
+
+
+let data = [];
+let editingId = null;
+let sortCol = 'num';
+let sortDir = 1;
+
+// ─── Seed data from PDFs ───────────────────────────────────────
+const SEED = [
+  // Owned (strikethrough = purchased, green highlight = not yet in master)
+  {name:"ADM UIC Mod 2",status:"owned",location:"GC",needPic:true,notes:"$1801"},
+  {name:"Aero Solus",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"Auto Ordnance 1927 Tommy Gun T150D",status:"owned",location:"USC",needPic:false,notes:"$1590.73 (T1D 10rd drum, 18\" brl)"},
+  {name:"B&T APC9 Pro FDE",status:"new",location:"USC",needPic:true,notes:"$2132.29 now"},
+  {name:"B&T GHM",status:"new",location:"",needPic:false,notes:"$1374.87; fde $1595"},
+  {name:"B&T MK II",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"Benelli Clone",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Benelli M2",status:"want",location:"",needPic:false,notes:"$1649"},
+  {name:"Benelli M2 Pistol Grip",status:"want",location:"",needPic:false,notes:"$1489"},
+  {name:"Benelli M3",status:"new",location:"",needPic:false,notes:"$1649, $1735"},
+  {name:"Benelli M4 LE",status:"owned",location:"GC",needPic:true,notes:"$1800; 11715"},
+  {name:"Beretta 1301",status:"new",location:"",needPic:false,notes:"$1479; Pistol grip ODG mod 2 $1595 free SH, black $1769, mod 2 non Pistol blk $1599, fde $1650"},
+  {name:"Beretta 92 Inox",status:"owned",location:"USC",needPic:true,notes:"$650"},
+  {name:"Beretta 92a1",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Beretta 92X Performance OR",status:"owned",location:"USC",needPic:true,notes:"$1469 now — $1478.88 (400 rebate, said pricing error)"},
+  {name:"Beretta APX 1 Tactical ODG",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"Beretta APX FDE (old model)",status:"owned",location:"USC",needPic:true,notes:"$320"},
+  {name:"Beretta A300 Ultima Patrol",status:"owned",location:"GC",needPic:true,notes:""},
+  {name:"Beretta Bomcat FDE",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Beretta Ghost",status:"priority",location:"",needPic:false,notes:"$1125-$1175"},
+  {name:"Beretta Green",status:"want",location:"",needPic:false,notes:"$610.08"},
+  {name:"Beretta M9",status:"owned",location:"USC",needPic:true,notes:"$591"},
+  {name:"Beretta M9a3",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Beretta PMX Tiger Stripe",status:"priority",location:"",needPic:false,notes:"$999.98 (not counting $150 rebate)"},
+  {name:"Beretta Px4 Carry",status:"owned",location:"USC",needPic:false,notes:"<$640"},
+  {name:"Beretta 80X Black",status:"want",location:"",needPic:false,notes:"$498, $452.96 shipped"},
+  {name:"Beretta 80x FDE TB",status:"want",location:"",needPic:false,notes:"$633.74, $660 shipped"},
+  {name:"BFG 45-70 Revolver",status:"want",location:"",needPic:false,notes:"$1122.38, $1155.21, $1197.43, $1199.49, $1202.52, $1208, $1218, $1160 shipped, $1119.43 shipped; Bisley Grip $1433.92"},
+  {name:"B&T SPC9",status:"want",location:"",needPic:false,notes:"$1912.33"},
+  {name:"B&T TP9",status:"want",location:"",needPic:false,notes:"$1965"},
+  {name:"B&T USA Station Six 9mm",status:"want",location:"",needPic:false,notes:"9 5\" 9rd Black Combo $1844.54"},
+  {name:"Barrett M107A1 29\"",status:"want",location:"",needPic:false,notes:"810021510064 — $9000 (ts $9565), $10249+S"},
+  {name:"BCM RECCE-16",status:"want",location:"",needPic:false,notes:"$1412, $1680"},
+  {name:"Canik Rival",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Canik Rival-S",status:"new",location:"",needPic:false,notes:"$696.85, $698.87, $707.11, 727.50, $740, $756.93, $769, $798.25, $824"},
+  {name:"Canik TTI",status:"owned",location:"GC",needPic:true,notes:"$700"},
+  {name:"Canik TP9 Elite Combat Executive",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Canik TP9 Elite SC",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Canik TP9SFX",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Century Arms AP5-P",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Century Arms Draco",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Century Arms Micro Draco",status:"want",location:"",needPic:false,notes:"$758, $698.87, $703"},
+  {name:"Century Arms Romanian PSL54 7.62x54R",status:"want",location:"",needPic:false,notes:"SD4x26S Scope RI035V-N $2043"},
+  {name:"Century Arms WASR 10",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Charles Daly Triple Honcho",status:"owned",location:"GC",needPic:true,notes:"$1195.64, $1298 s&t, $1195, $1205"},
+  {name:"Chiappa 1887 Case Hardened Terminator",status:"want",location:"",needPic:false,notes:"$1161.50"},
+  {name:"Chiappa Rhino 6\" Gold",status:"owned",location:"USC",needPic:true,notes:"$1350 / $1500 now"},
+  {name:"Chiappa Rhino 6\" Nebula",status:"want",location:"",needPic:false,notes:"$1265.88, $1270.48, $1296, $1372.57, $1228.38 (OOS), $1419.27, $1420.48, $1469.49, $1368"},
+  {name:"Chiappa Rhino Green 6\"",status:"want",location:"",needPic:false,notes:"$1066.98, $1154"},
+  {name:"Chiappa Rhino SS",status:"want",location:"",needPic:false,notes:"$990+t/s, $1052.58, $1097.44"},
+  {name:"Chiappa Rhino Black",status:"want",location:"",needPic:false,notes:"$954, $967.98, 978.36, $958.40, $962 +S/T"},
+  {name:"Cimarron P1873",status:"want",location:"",needPic:false,notes:"$473 now, $487 pre war 357"},
+  {name:"CMMG Blaster",status:"want",location:"",needPic:false,notes:"$850"},
+  {name:"Colt Python SS 6 inch",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Colt Python SS 4.25\"",status:"want",location:"",needPic:false,notes:"$1164, $1150, $1174.56, $1165.80, $1176.19, $1248, $1299.16, $11299, $1101.88, $1220, $1235.87, $1262.11, $1125 208"},
+  {name:"Colt Gold Cup National Match",status:"want",location:"",needPic:false,notes:"$1099, $1100, $1045.65, $1099.95, $1078.03, $1101, $1106.41, $1113.12"},
+  {name:"Colt Python SS 3\"",status:"owned",location:"GC",needPic:false,notes:"$1185.65"},
+  {name:"Colt Python 6\" Blued",status:"priority",location:"",needPic:false,notes:"$1164.62, $1169.53, $1174.56, $1182.70 FS, $1186.21, $1188.99, $1219.77, $1224.88, $1230, $1291.26, $1265.03, $1299.16, $1275, $1300, $1369"},
+  {name:"Colt Python 4\" Blued",status:"owned",location:"GC",needPic:true,notes:"$1275, $1344, $1347.37"},
+  {name:"Colt Python Combat Elite",status:"owned",location:"GC",needPic:true,notes:"$1255, $1219, $1198.91, $1122.21, $1179"},
+  {name:"Colt Viper 4.25\"",status:"want",location:"",needPic:false,notes:"$701.89, $706.83, $757.71, $773.71, $779.21, $784.21, $773, $775+T/S, $780.81, $835, $839, $910"},
+  {name:"Colt Kodiak",status:"want",location:"",needPic:false,notes:"$1235.81, $1369, $1292.67, $1369, $1320.52, $1360.36, $1377.52, $1384.88, $1300, $1384.40"},
+  {name:"Colt Kodiak 6\"",status:"want",location:"",needPic:false,notes:"$1215, $1235.81, $1244.75, $1216.19, $1224.48, $1291.09, 1296.14, $1243.37, $1249.3, $1290.48, $1370"},
+  {name:"Colt Python SS 8\"",status:"want",location:"",needPic:false,notes:"$1193, $1164.62, $1174.56, $1133, $1101.88, $1229"},
+  {name:"Colt Cobra Blue",status:"want",location:"",needPic:false,notes:"$652, $635.46, $676.95, $681"},
+  {name:"Colt Python 3\" Blued",status:"want",location:"",needPic:false,notes:"$1200, $1290.37, $1296.55, $1302.15, $1360, $1500"},
+  {name:"Colt Grizzly",status:"owned",location:"GC",needPic:true,notes:"$1359, $1367.97"},
+  {name:"Colt Gold Cup Trophy 9mm",status:"owned",location:"GC",needPic:true,notes:"$1475.33, $1120 (pricing error)"},
+  {name:"Colt Anaconda 8 inch",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Colt King Cobra 3\"",status:"owned",location:"GC",needPic:true,notes:"$730 w/tax, no shipping, no ffl — 781.09 from The Armories"},
+  {name:"Colt Delta Elite",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"Colt Bright Government",status:"want",location:"",needPic:false,notes:""},
+  {name:"Colt LE6940",status:"want",location:"",needPic:false,notes:"$800, 'Restricted' if can find"},
+  {name:"Colt LE6920",status:"want",location:"",needPic:false,notes:"'Restricted' $675"},
+  {name:"CZ P-10c",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"CZ P-10C OR TB",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"CZ P-10F OR TB",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"CZ Scorpion Evo 3 S1",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"CZ 75 SP-01 Tactical",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"CZ 75 D PCR",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"CZ Shadow 2 OR",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"CZ P-01",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"CZ P-07",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"CZ 97BD",status:"owned",location:"USC",needPic:false,notes:"<$850"},
+  {name:"CZ Rami",status:"owned",location:"USC",needPic:false,notes:"<$850"},
+  {name:"CZ Parrot",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"CZ P-01 Green",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"CZ P-01 Steel",status:"want",location:"",needPic:false,notes:"99021 (more rare) $1150, or 99041"},
+  {name:"CZ P-01 Urban Grey TB",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"CZ SP-01 Tactical Urban Grey TB",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"CZ 75 Urban Grey",status:"priority",location:"",needPic:false,notes:"want for $650"},
+  {name:"CZ 75 BD",status:"want",location:"",needPic:false,notes:"$549.11, $467.99 now"},
+  {name:"CZ 75 Retro",status:"want",location:"",needPic:false,notes:"$882, $699"},
+  {name:"CZ 75 B High Polished",status:"priority",location:"",needPic:false,notes:"$1075-$1100"},
+  {name:"CZ Shadow 2 Compact",status:"want",location:"",needPic:false,notes:"$1149, $1109.74, $1049 (has t/s), $1105.49"},
+  {name:"CZ 2 Compact Carry",status:"want",location:"",needPic:false,notes:"$1188, $1206.98"},
+  {name:"Czechpoint VZ 61",status:"want",location:"",needPic:false,notes:""},
+  {name:"Dan Wesson 1911 Specialist",status:"owned",location:"USC",needPic:false,notes:"$1600"},
+  {name:"Dan Wesson 445 VH8 or 7445",status:"want",location:"",needPic:false,notes:""},
+  {name:"Dan Wesson Pointman 7",status:"want",location:"",needPic:false,notes:"$1170; P45 $1667.67, 1690.86"},
+  {name:"Dan Wesson Pointman 45",status:"want",location:"",needPic:false,notes:"$1750, $1615"},
+  {name:"Dan Wesson DWX",status:"owned",location:"GC",needPic:true,notes:"$1869 / $2016"},
+  {name:"Dan Wesson Kodiak",status:"owned",location:"GC",needPic:true,notes:""},
+  {name:"Daniel Defense DDM4 V7",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Daniel Defense H9",status:"want",location:"",needPic:false,notes:"$839, $958.55, $890, $900"},
+  {name:"DDM4 PDW 300",status:"want",location:"",needPic:false,notes:"$1598, $1500"},
+  {name:"DP-12 Black",status:"want",location:"",needPic:false,notes:"$1000; fde $970, $1000"},
+  {name:"Diamondback SDR Revolver",status:"want",location:"",needPic:false,notes:"$544.32, $547.54, $550.27, $583.95, $640, $584.25"},
+  {name:"Eotech Vudu 3-9 HC1 MOA",status:"want",location:"",needPic:false,notes:"$698.59"},
+  {name:"Eotech 3-2",status:"want",location:"",needPic:false,notes:"$597.31; 3-0 $535, $579, $588.88; green reticle 2-0 $610.68"},
+  {name:"Eotech Tan 3-0",status:"want",location:"",needPic:false,notes:"$535, $549, $598.88; 3-2 tan $617.21"},
+  {name:"Eotech G33",status:"want",location:"",needPic:false,notes:"$438.39, $440.74+s/t, $444.14+S, $445 shipped no tax FL holiday w/ free ship; tan $464.14, $450"},
+  {name:"Eotech Combo EXPS3-4 4 dot",status:"want",location:"",needPic:false,notes:"$1097.86 piece for $990 total; need combo below to buy"},
+  {name:"Eotech Combo EXPS3-0 Classic",status:"want",location:"",needPic:false,notes:"$1096 piece combo for $990 total; tan $1023.47"},
+  {name:"Extar EP9",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"FB Radom Beryl",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"FK BRNO 7.5",status:"want",location:"",needPic:false,notes:"$1688"},
+  {name:"FN FNX 45 Tactical",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"FN 509 Tactical FDE",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"FN 57 old model",status:"owned",location:"USC",needPic:false,notes:"<$850"},
+  {name:"FN PS90",status:"owned",location:"USC",needPic:false,notes:"$1500"},
+  {name:"FN SCAR 17s FDE NRCH",status:"owned",location:"USC",needPic:false,notes:"<$3700"},
+  {name:"FN M249S",status:"want",location:"",needPic:false,notes:"$8000"},
+  {name:"Franchi SPAS-12 Shotgun",status:"want",location:"",needPic:false,notes:"$5k on GB"},
+  {name:"Geissele Super Duty 14.5 OD Green",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"Geissele Super Duty MOD1 FDE",status:"want",location:"",needPic:false,notes:"$1746, $1700, $1789"},
+  {name:"Gilboa",status:"want",location:"",needPic:false,notes:"$1921.88"},
+  {name:"Girsan Regard Gold",status:"want",location:"",needPic:false,notes:"$609.55"},
+  {name:"Girsan Witness 2311",status:"want",location:"",needPic:false,notes:"$899, $907.13, $939, $949.95+sh, $962 fs/nt, $954.95+S, $1045 — 741566907432"},
+  {name:"Glock 17L Gen1",status:"want",location:"",needPic:false,notes:"$566.49"},
+  {name:"Glock 17L Gen 5 MOS",status:"new",location:"",needPic:false,notes:"$485.85"},
+  {name:"Glock 49 Gen 5 MOS",status:"new",location:"",needPic:false,notes:""},
+  {name:"Glock 43",status:"want",location:"",needPic:false,notes:""},
+  {name:"Glock 43X Cow",status:"want",location:"",needPic:false,notes:"$506.09"},
+  {name:"Glock 22",status:"want",location:"",needPic:false,notes:""},
+  {name:"Glock 17 Gen 1",status:"owned",location:"USC",needPic:true,notes:"$456.93"},
+  {name:"Glock 17L Gen 3",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"Glock Gen 4 17C",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Glock 19",status:"owned",location:"",needPic:false,notes:""},
+  {name:"Glock 19X",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Glock 20",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Glock 48",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Glock 34",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Glock 40",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Glock 45 MOS",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Grand Power X-Calibur",status:"want",location:"",needPic:false,notes:"$1029.76 shipped, $1025.76 shipped"},
+  {name:"Griffith MK2 Ambi Lower",status:"want",location:"",needPic:false,notes:"black and Terra for $130, green/warkhawk $143"},
+  {name:"Henry AXE",status:"want",location:"",needPic:false,notes:"$760, $735.04, $739.91, $748, $740.88, $766.23"},
+  {name:"Henry Big Boy Model X 357",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Heritage Case Hardened Coach Shotgun",status:"new",location:"",needPic:false,notes:"$647.25, $652.33, 662.84, $666.67, $668.47"},
+  {name:"Heritage Rough Rider",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"HK VP9",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"HK VP9sk",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"HK SP5",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"HK SP5K",status:"want",location:"",needPic:false,notes:"$2409*"},
+  {name:"HK P30L",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"HK USP 45 Tactical",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"HK USP 9 Tactical ODG",status:"owned",location:"USC",needPic:true,notes:"$1026.15+TS — (500 made, I have #24)"},
+  {name:"HK USP9 FDE",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"HK Mark 23",status:"owned",location:"DSC",needPic:false,notes:"$2400"},
+  {name:"HK USP9 Compact v7 LEM",status:"owned",location:"USC",needPic:true,notes:"$955.11 or v3 da/sa no safety"},
+  {name:"HK USP 45 Compact Tactical",status:"priority",location:"",needPic:false,notes:"$1825"},
+  {name:"HK P2000 V3 FDE",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"HK VP9B Match",status:"owned",location:"NS",needPic:false,notes:"$900"},
+  {name:"HK45 CT",status:"new",location:"",needPic:false,notes:"$600, $800, $730, $700.18"},
+  {name:"HK MR762A1",status:"want",location:"",needPic:false,notes:"$3150, $2736, $3000, $3049, $3088, $3114 shipped"},
+  {name:"HK 762A4",status:"want",location:"",needPic:false,notes:"$3700, $3740"},
+  {name:"HK Range Package",status:"want",location:"",needPic:false,notes:"$5700, $6000"},
+  {name:"HK Mr556a4",status:"want",location:"",needPic:false,notes:"$3265, $3325, $319, $3065, $3200, $3065, $3000, $3425, $2882.33"},
+  {name:"HK P7",status:"priority",location:"",needPic:false,notes:"$2470-$2525"},
+  {name:"HK USP 45",status:"want",location:"",needPic:false,notes:"$949"},
+  {name:"HK USP Elite 9mm",status:"want",location:"",needPic:false,notes:"(w/ case) $1299"},
+  {name:"HK Sp5k FDE",status:"want",location:"",needPic:false,notes:"$2649"},
+  {name:"HK USP Compact 40",status:"new",location:"",needPic:false,notes:"$723.77"},
+  {name:"HK VP40",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"HK Expert 9mm",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"HK 45 Tactical LEM",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Italian Brno",status:"want",location:"",needPic:false,notes:"$1306.95, $1313, $1320.15, $1330.85, $1439.10 FF"},
+  {name:"IWI Jericho",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"IWI Masada",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"IWI Galil Ace Gen I",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"IWI GALIL ACE GEN 2",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"IWI X95",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"IWI Zion 12.5 AR Pistol",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"IWI TS12 LH ODG",status:"new",location:"",needPic:false,notes:"$1024.69, $1129, $1103"},
+  {name:"IWI Tavor 7 Blem",status:"want",location:"",needPic:false,notes:"$1599/$1449 (bereli w and w/o membership)"},
+  {name:"IWI 25",status:"want",location:"",needPic:false,notes:"$1590, $1562"},
+  {name:"IWI Jericho 941R Cowboy Bebop",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"IWI Carmel",status:"owned",location:"GC",needPic:true,notes:"$999, $1030"},
+  {name:"Kalashnikov KP-9",status:"owned",location:"USC",needPic:true,notes:"<$800"},
+  {name:"KAC SR-25",status:"want",location:"",needPic:false,notes:"$7299, $7500, $8000, $9000"},
+  {name:"Knights Armament (KAC) SR-15",status:"owned",location:"USC",needPic:true,notes:"$3000"},
+  {name:"Kimber K6S DASA 2\"",status:"want",location:"",needPic:false,notes:"$850, $844.59, $767.98"},
+  {name:"Korth Super Sport Revolver",status:"want",location:"",needPic:false,notes:"$6343, $6249, $6200+t/s, $6700 no t/s"},
+  {name:"Kel Tec KSG",status:"want",location:"",needPic:false,notes:"$499, $479, $540"},
+  {name:"Kriss Vector",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"LMT Mar-H / Mar-Hc",status:"owned",location:"USC",needPic:true,notes:"$2952.99"},
+  {name:"LMT MARS-L 5.56",status:"new",location:"",needPic:false,notes:"$2320 (rooftop), $2363 KY, $2600, $2102, $2234.10; FDE $2200"},
+  {name:"LMT MARS-L Quad",status:"want",location:"",needPic:false,notes:"$1832.12"},
+  {name:"LWRC M6IC-DI",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"Luago Alien",status:"want",location:"",needPic:false,notes:"$2000"},
+  {name:"MAC DS 5\" Comp",status:"want",location:"",needPic:false,notes:"$874, $875.07, $872.56, $796.54"},
+  {name:"Magnum Research BFG 45-70 Revolver",status:"want",location:"",needPic:false,notes:"$1222.45 black grip / $1346.92 Bisley Grip"},
+  {name:"Magnum Research Desert Eagle Brush Polished",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Magnum Research Desert Eagle Case Hardened",status:"new",location:"",needPic:false,notes:"$2500 want pay; in stock for $3600 not counting tax"},
+  {name:"Magnum Research Desert Eagle Gold TS",status:"new",location:"",needPic:false,notes:"<$2500 want pay"},
+  {name:"Magnum Research Desert Eagle Black Cherry",status:"want",location:"",needPic:false,notes:"$1639, $1656.97"},
+  {name:"Magnum Research Desert Eagle Gold",status:"owned",location:"DSC",needPic:false,notes:"$2300"},
+  {name:"Magnum Research Desert Eagle Polished Chrome",status:"want",location:"",needPic:false,notes:"$2589, $2690, $2326, $3000, $2309 — get $115.50 back, Free shipping, life warranty with Buyers club membership at Blackstone"},
+  {name:"Manurhin MR73 Sport 5.25",status:"want",location:"",needPic:false,notes:"$3699"},
+  {name:"Marlin 1875 45-70 Dark Series",status:"want",location:"",needPic:false,notes:"$1050, $1000, $1200, $1140, $1091"},
+  {name:"Marlin SBL",status:"owned",location:"USC",needPic:true,notes:"$1200 @rk/$1320+$30 SH possible lowest $1127"},
+  {name:"Mossberg 590",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Mossberg 590 Shockwave Night Stick",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Mossberg 590a1 Retro Grade",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Mossberg 940 Pro Tactical",status:"new",location:"",needPic:false,notes:"$680, $690 FreeS"},
+  {name:"Mossberg Shockwave SPX",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Mossberg 500 RETRO",status:"want",location:"",needPic:false,notes:"$466.68, $419.91, $450, $412.50, $449, $443.39, $439.95, $415 shipped, $450.35 Shipped, $443.10"},
+  {name:"Mossberg 590 TALO Chrome",status:"new",location:"",needPic:false,notes:"$695.87, $699.70, $705.90, $700.12, $701.58, $708.92, $713.74, $830, $709.02"},
+  {name:"Mossberg 500 Persuader Pistol Grip",status:"new",location:"",needPic:false,notes:""},
+  {name:"MP-40",status:"want",location:"",needPic:false,notes:"$482.23"},
+  {name:"Nighthawk",status:"want",location:"",needPic:false,notes:""},
+  {name:"PA SLx FFP 1-8x24mm",status:"want",location:"",needPic:false,notes:"$389.99"},
+  {name:"PSA Mixtape",status:"want",location:"",needPic:false,notes:"$1249"},
+  {name:"PTR 91",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"PWS MK116 MOD 1",status:"want",location:"",needPic:false,notes:"$772 shipped BIFND"},
+  {name:"Q Honey Badger",status:"want",location:"",needPic:false,notes:"$2699, $3k, $2699, $2949"},
+  {name:"Q Sugar Weasel",status:"want",location:"",needPic:false,notes:"$1650, $1525.55, $1467"},
+  {name:"Radian Model 1",status:"want",location:"",needPic:false,notes:""},
+  {name:"Remington 870 Tactical Home Defense",status:"new",location:"",needPic:false,notes:""},
+  {name:"Rock Island 1911 FS",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Ruger GP100 4\"",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Ruger 57",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Ruger LCP MAX",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Ruger LCP II",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Ruger SP101",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Ruger Super Redhawk Alaskan",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Ruger GP100 TALO",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Ruger LCR",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Ruger Mark IV Hunter Stainless",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Ruger Mark IV Target 10\"",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Ruger Vaquero",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Ruger LC Carbine 45acp",status:"want",location:"",needPic:false,notes:"$511.48, $672, $686"},
+  {name:"Ruger American Gen 2",status:"want",location:"",needPic:false,notes:"$520 shipped, $504"},
+  {name:"Ruger RXM",status:"new",location:"",needPic:false,notes:"$344, $348"},
+  {name:"SAR9 SOCOM Green Tactical",status:"want",location:"",needPic:false,notes:"$399.33"},
+  {name:"Shadow Systems DR920 Elite",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"SIG P226 MK25",status:"want",location:"",needPic:false,notes:"$940, $989.96, $990, $1100, $974, $1070"},
+  {name:"SIG P226 Nitron",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"SIG P365 XL",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"SIG P320 X5 Legion",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"SIG M18",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"SIG P229 Legion OR",status:"want",location:"",needPic:false,notes:"$1136.14, $1170, $1195, $1173.59, $1242.94, $1300, $1248.50, $1105.88 shipped, $1260 FSHNT Hammer Outdoor"},
+  {name:"SIG 365 AXG Legion",status:"owned",location:"GC",needPic:true,notes:"$1155, $1050"},
+  {name:"SIG P320 AXG Scorpion",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Sig P226 Scorpion",status:"want",location:"",needPic:false,notes:"used $949"},
+  {name:"Sig P226 X Five Classic",status:"new",location:"",needPic:false,notes:"$1968+SH, $2012.01, $2070, $2016, $1992 (208), $2068, $2201, $1950, $1932 — get $105 back, free shipping and lifetime warranty. Membership $119"},
+  {name:"Sig P226 X Five Legion",status:"new",location:"",needPic:false,notes:"$1932, $1945, $1909 (208), $1919.50, $1965, $1949.99 free ah no tax"},
+  {name:"Sig P226 X Five Reserve",status:"want",location:"",needPic:false,notes:"$2846, $2700+tax, $2463"},
+  {name:"Sig Sauer MCX Spear",status:"want",location:"",needPic:false,notes:"$3519, $3500, $3570"},
+  {name:"Sig Sauer 365 Macro",status:"want",location:"",needPic:false,notes:"$719, $705.49 (208), $713, $720.54, $800"},
+  {name:"Silencero Maxim",status:"want",location:"",needPic:false,notes:""},
+  {name:"Skorpion VZ 6161v",status:"want",location:"",needPic:false,notes:"$800"},
+  {name:"Springfield Hellcat OSP",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Springfield SA-35",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Springfield 1911 Garrison",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Springfield Hellion FDE",status:"owned",location:"GC",needPic:true,notes:"$1293.93 with tax and SH; black $1500"},
+  {name:"Springfield Echelon TB",status:"want",location:"",needPic:false,notes:"$580/$510.93 w/o TB or $499 including tax and SH; Comp $579, $580.58, $593"},
+  {name:"Springfield Ronin 9mm",status:"new",location:"",needPic:false,notes:"$600"},
+  {name:"Springfield M1A Standard",status:"want",location:"",needPic:false,notes:"$1473, $1452.45, $1459"},
+  {name:"Springfield Kuna w/ brace",status:"want",location:"",needPic:false,notes:"$988.48, $970, $990 shipped, $910.20, $945+t/s, $967.92, $986, $1000"},
+  {name:"Springfield 1911 TRP",status:"new",location:"",needPic:false,notes:"$1136.85, $1420"},
+  {name:"Staccato XL DPO",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Staccato XC",status:"want",location:"",needPic:false,notes:"$4199 ($3655 suitup mojo from Bihlg Tex)"},
+  {name:"Staccato P Duo",status:"want",location:"",needPic:false,notes:""},
+  {name:"Steyr A2 MF",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Steyr AUG (non NATO)",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Stoeger Side by Side Nickel",status:"want",location:"",needPic:false,notes:"$520, $523 shipped, $518.69, $500"},
+  {name:"Stoeger Stage Coach DB",status:"owned",location:"USC",needPic:false,notes:"$511"},
+  {name:"S&W M&P 15 Sport 2",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"S&W M&P9 Compact",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"S&W M&P9 M2.0 FDE",status:"owned",location:"NS",needPic:false,notes:""},
+  {name:"S&W M&P Shield Plus OR",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"S&W 686",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"S&W 500",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"S&W 460XVR",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"S&W Classic 29",status:"owned",location:"DSC",needPic:false,notes:"<$1200"},
+  {name:"S&W Model 10",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"S&W 586",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"S&W 686 TALO 5\" smooth cylinder",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"S&W 629 SS 4\"",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"S&W 60",status:"owned",location:"USC",needPic:false,notes:"$650"},
+  {name:"S&W 36 Chief",status:"owned",location:"GC",needPic:true,notes:"$718"},
+  {name:"S&W Model 27 4\"",status:"want",location:"",needPic:false,notes:"$872.25 shipped, $949, $900"},
+  {name:"S&W Bodyguard",status:"new",location:"",needPic:false,notes:"$340, $345"},
+  {name:"S&W 686 2.5\"",status:"owned",location:"USC",needPic:false,notes:"$750"},
+  {name:"S&W 686 TALO 7\"",status:"owned",location:"USC",needPic:true,notes:"$718"},
+  {name:"S&W 642 Pro Series",status:"owned",location:"USC",needPic:false,notes:"$454"},
+  {name:"S&W 627 PC",status:"want",location:"",needPic:false,notes:"$1022.84, $1024, $1048.34 now"},
+  {name:"S&W 627 PC Vcomp 5\"",status:"want",location:"",needPic:false,notes:"$1520, $1488.52, $1453, $1477.79, $1319.85 shipped, $1400 (but tax), $1468.78, $1461, $1400, $1458, $1464, $1490, $1525"},
+  {name:"S&W m629 Performance Center",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"S&W Performance Center 629-6 V-Comp",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"S&W 327 TRR8 PC",status:"owned",location:"DSC",needPic:false,notes:"$1500"},
+  {name:"S&W 327 PC Carry",status:"new",location:"",needPic:false,notes:"$1329.99, $1334.88 shipped, $1368.42, $1384, $1340, $1380 from L&L recent, $1359.78 and $1470"},
+  {name:"S&W 686 PC",status:"want",location:"",needPic:false,notes:"$1119, $1067 or $1063.94 including tax and SH — 170346"},
+  {name:"S&W 19-4 P&R Target 357 4\" Nickel 1978",status:"owned",location:"USC",needPic:true,notes:"RARE ALL TARGET"},
+  {name:"S&W 686 TALO 3\"",status:"new",location:"",needPic:false,notes:"$824.26, $800, $818.31, $798.82, $765.69 including tax and shipping"},
+  {name:"S&W 629 PC Stealth Hunter",status:"new",location:"",needPic:false,notes:"$1182, $1470, $1480, $1478, $1500, $1519, $1539.95, $1550 10/24, $1540"},
+  {name:"S&W 629 scope",status:"want",location:"",needPic:false,notes:"$1339.06, $1291, $1297.37, 1287, $1369, $1300"},
+  {name:"S&W 19 Blues 4.25\"",status:"want",location:"",needPic:false,notes:"$831.23, $837.32"},
+  {name:"S&W Spec Series V",status:"want",location:"",needPic:false,notes:"$1350, $1375"},
+  {name:"S&W M&P12",status:"new",location:"",needPic:false,notes:"$899, $1000"},
+  {name:"S&W model 19 Carry Comp",status:"want",location:"",needPic:false,notes:"12039 3\" $1100, $999, $1068.99; 13323 2.5\" $949, $1035.98"},
+  {name:"S&W 686 weighted",status:"owned",location:"GC",needPic:true,notes:"$1357.43, $1355, $1424.80"},
+  {name:"S&W 629 Weighted",status:"owned",location:"GC",needPic:true,notes:"$1253, $1398, $1400, $1477, $1461, $1500"},
+  {name:"S&W 500 Comped 4\"",status:"owned",location:"GC",needPic:true,notes:"$1348, $1258.93, $1286, $1293.56"},
+  {name:"S&W M&P 2.0 Metal CC",status:"want",location:"",needPic:false,notes:"$641, $780, $800"},
+  {name:"S&W model 64-8",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"S&W PC Stealth Hunter",status:"want",location:"",needPic:false,notes:"$1819"},
+  {name:"Trijicon ACOG 4x32mm",status:"want",location:"",needPic:false,notes:"$1049.64"},
+  {name:"Taran Tactical Sand Viper",status:"want",location:"",needPic:false,notes:"$8000"},
+  {name:"Taran Bronze w/SRO",status:"want",location:"",needPic:false,notes:"$7700"},
+  {name:"Taurus Judge Tracker",status:"want",location:"",needPic:false,notes:"725327635314 — $370+TS"},
+  {name:"Taurus Judge",status:"want",location:"",needPic:false,notes:"725327604525 — $440+S"},
+  {name:"Taurus G3c",status:"owned",location:"",needPic:false,notes:""},
+  {name:"Taurus TX22",status:"owned",location:"USC",needPic:false,notes:""},
+  {name:"Taurus 608 4\" Ported",status:"owned",location:"GC",needPic:false,notes:"$470, $562.50"},
+  {name:"Tec 9",status:"want",location:"",needPic:false,notes:""},
+  {name:"Tikka Lite SS 308",status:"want",location:"",needPic:false,notes:"$750, $700 now"},
+  {name:"Tisas Night Stalker DS",status:"want",location:"",needPic:false,notes:"$789"},
+  {name:"Tisas Night Stalker Single",status:"want",location:"",needPic:false,notes:"$495+TS"},
+  {name:"Tisas Raider",status:"owned",location:"USC",needPic:true,notes:"$542"},
+  {name:"Tisas A1 ASF",status:"owned",location:"USC",needPic:true,notes:"$362.95 now — 723551444191"},
+  {name:"Uzi",status:"want",location:"",needPic:false,notes:""},
+  {name:"WALTHER PDP Pro SD Cmp",status:"owned",location:"USC",needPic:true,notes:"<$600"},
+  {name:"Walther PPK Black",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Walther PPK/S",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"Walther PPQ M2 Q5 Match SF",status:"owned",location:"USC",needPic:true,notes:""},
+  {name:"Walther P99 Final",status:"owned",location:"USC",needPic:false,notes:"$554.94"},
+  {name:"Walther PDP Full Size",status:"owned",location:"",needPic:false,notes:""},
+  {name:"Walther PDP Steel Frame",status:"want",location:"",needPic:false,notes:"$1869, $1749"},
+  {name:"Wilson Combat CQB",status:"want",location:"",needPic:false,notes:"$2549, $2593.24 now"},
+  {name:"Wilson Combat CQB SS",status:"want",location:"",needPic:false,notes:"$2957, $2953.12"},
+  {name:"Zastava PAP M70",status:"owned",location:"DSC",needPic:false,notes:""},
+  {name:"MDT Gen Bipod",status:"want",location:"",needPic:false,notes:"$142.55"},
+  {name:"MDT Oryx",status:"want",location:"",needPic:false,notes:"$60, $75.22"},
+  {name:"Atlas",status:"want",location:"",needPic:false,notes:""},
+  {name:"Athlon Ares ETR 3-18",status:"want",location:"",needPic:false,notes:"$677, $584"},
+  {name:"Athlon Cronus BTR GEN 2 aprs1 mil",status:"want",location:"",needPic:false,notes:"$1200 on Govx, $1250"},
+];
+
+async function initData() {
+  // Show loading message
+  const tbody = document.getElementById('tableBody');
+  if(tbody) tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:40px;color:var(--muted);"><span class="loading-spin" style="width:20px;height:20px;border-width:3px;display:inline-block;"></span> Loading from cloud...</td></tr>';
+
+  // Step 1: Load localStorage first (has photos)
+  let localData = null;
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if(saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if(parsed && parsed.length > 0) localData = parsed;
+    } catch(e) {}
+  }
+
+  // Step 2: Try Firebase (has latest data from all devices)
+  if(window._fbLoad) {
+    try {
+      const fbData = await window._fbLoad();
+      if(fbData && fbData.length > 0) {
+        // Merge: use Firebase data but restore photos from localStorage
+        if(localData) {
+          const photoMap = {};
+          localData.forEach(d => { if(d.photo) photoMap[d.id] = d.photo; });
+          data = fbData.map(d => {
+            if(photoMap[d.id]) d.photo = photoMap[d.id];
+            return d;
+          });
+        } else {
+          data = fbData;
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        console.log('Loaded ' + data.length + ' entries from Firebase');
+        return;
+      }
+    } catch(e) {
+      console.error('Firebase load failed:', e);
+    }
+  }
+
+  // Step 3: Fall back to localStorage only
+  if(localData) {
+    data = localData;
+    console.log('Loaded ' + data.length + ' entries from localStorage');
+    return;
+  }
+
+  // Step 3: First run — seed from PDF data
+  console.log('No saved data found — seeding from default list');
+  data = SEED.map((item, i) => ({
+    id: Date.now() + i,
+    num: i + 1,
+    name: item.name,
+    status: item.status || 'want',
+    location: item.location || '',
+    upc: '',
+    description: '',
+    purchasePrice: '',
+    purchaseDate: '',
+    priceHistory: item.notes || '',
+    userNotes: '',
+    notes: '',
+    gunType: '',
+    caliber: '',
+    manufacturer: '',
+    serial: '',
+    photo: '',
+    needPic: item.needPic || false,
+  }));
+  saveAll();
+}
+
+// ─── Modal UPC / MPN Lookup ──────────────────────────────────
+function fillModalFields(p) {
+  // Fill any empty modal fields from lookup result
+  if(p.manufacturer) { const el=document.getElementById('fManufacturer'); if(el&&!el.value) el.value=p.manufacturer; }
+  if(p.gunType)       { const el=document.getElementById('fGunType');       if(el&&!el.value) el.value=p.gunType; }
+  if(p.caliber)       { const el=document.getElementById('fCaliber');       if(el&&!el.value) el.value=p.caliber; }
+  if(p.mpn)           { const el=document.getElementById('fMPN');           if(el&&!el.value) el.value=p.mpn; }
+  if(p.upc)           { const el=document.getElementById('fUPC');           if(el&&!el.value) el.value=p.upc; }
+  if(p.description)   { const el=document.getElementById('fDesc');          if(el&&!el.value) el.value=p.description; }
+  if(p.official_name) {
+    const nameEl = document.getElementById('fName');
+    if(nameEl && p.official_name.length > 3) {
+      if(!nameEl.value || nameEl.value !== p.official_name) {
+        // Show inline suggestion under name field
+        let suggest = document.getElementById('fNameSuggest');
+        if(!suggest) {
+          suggest = document.createElement('div');
+          suggest.id = 'fNameSuggest';
+          suggest.style.cssText = 'font-size:11px;margin-top:4px;color:var(--accent2);cursor:pointer;';
+          nameEl.parentNode.appendChild(suggest);
+        }
+        suggest.innerHTML = `💡 Official name: <strong>${p.official_name}</strong> — <a onclick="document.getElementById('fName').value='${p.official_name.replace(/'/g,"\'")}';this.parentNode.remove();" style="cursor:pointer;text-decoration:underline;">use it</a> / <a onclick="this.parentNode.remove();" style="cursor:pointer;">ignore</a>`;
+      }
+    }
+  }
+  showToast((p.manufacturer||'') + (p.gunType ? ' · '+p.gunType : '') + (p.caliber ? ' · '+p.caliber : '') || 'Fields populated ✓');
+}
+
+async function modalUPCLookup(el) {
+  const val = el.value.trim().replace(/[^0-9]/g,'');
+  const orig = el.getAttribute('data-original-upc')||'';
+  if(!val || val === orig || val.length < 10) return;
+  el.setAttribute('data-original-upc', val);
+  el.style.borderColor = 'var(--accent2)';
+  showToast('🔍 Looking up UPC...');
+  try {
+    const name = document.getElementById('fName').value || '';
+    const prompt = `Firearm UPC: "${val}", name hint: "${name}". Return ONLY JSON no markdown:
+{"official_name":"","manufacturer":"","mpn":"","description":"","gunType":"Handgun|Revolver|Rifle|Shotgun|Bolt Action|Lever Action|Bullpup|PCC|AR Pistol|Suppressor|Optic|Accessory|Other","caliber":"e.g. 9mm"}`;
+    const text = await callClaude(prompt);
+    let p = {};
+    try { p = JSON.parse(text.replace(/```json|```/g,'').trim()); } catch(e) {}
+    fillModalFields(p);
+  } catch(e) { showToast('❌ UPC lookup: ' + (e.message||'failed').substring(0,50)); }
+  el.style.borderColor = '';
+}
+
+async function modalMPNLookup(el) {
+  const val = el.value.trim();
+  const orig = el.getAttribute('data-original-mpn')||'';
+  if(!val || val === orig) return;
+  el.setAttribute('data-original-mpn', val);
+  el.style.borderColor = 'var(--accent2)';
+  showToast('🔍 Looking up MPN...');
+  try {
+    const name = document.getElementById('fName').value || '';
+    const prompt = `Firearm MPN/model number: "${val}", name hint: "${name}". Return ONLY JSON no markdown:
+{"official_name":"","manufacturer":"","upc":"exact 12-digit UPC if certain else empty","description":"","gunType":"Handgun|Revolver|Rifle|Shotgun|Bolt Action|Lever Action|Bullpup|PCC|AR Pistol|Suppressor|Optic|Accessory|Other","caliber":"e.g. 9mm"}`;
+    const text = await callClaude(prompt);
+    let p = {};
+    try { p = JSON.parse(text.replace(/```json|```/g,'').trim()); } catch(e) {}
+    fillModalFields(p);
+  } catch(e) { showToast('❌ MPN lookup: ' + (e.message||'failed').substring(0,50)); }
+  el.style.borderColor = '';
+}
+
+// ─── Modal Photo Helpers ─────────────────────────────────────
+function previewModalPhoto(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const preview = document.getElementById('fPhotoPreview');
+    const removeBtn = document.getElementById('fPhotoRemoveBtn');
+    const photoData = document.getElementById('fPhotoData');
+    if(preview) preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`;
+    if(photoData) photoData.value = e.target.result;
+    if(removeBtn) removeBtn.style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearModalPhoto() {
+  const preview = document.getElementById('fPhotoPreview');
+  const removeBtn = document.getElementById('fPhotoRemoveBtn');
+  const photoData = document.getElementById('fPhotoData');
+  const fileInput = document.getElementById('fPhotoFile');
+  if(preview) preview.innerHTML = '📷';
+  if(photoData) photoData.value = '';
+  if(removeBtn) removeBtn.style.display = 'none';
+  if(fileInput) fileInput.value = '';
+}
+
+// ─── Photo Upload ─────────────────────────────────────────────
+function triggerPhotoUpload(id) {
+  const input = document.getElementById("photoinput-"+id);
+  if(input) input.click();
+}
+
+function handlePhotoUpload(id, input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const entry = data.find(d=>d.id===id);
+    if(entry) {
+      entry.photo = e.target.result;
+      saveAll();
+      filterTable();
+      showToast("Photo saved ✓");
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function viewPhoto(id) {
+  const entry = data.find(d=>d.id===id);
+  if(!entry || !entry.photo) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+  overlay.innerHTML = `<div style="position:relative;max-width:90vw;max-height:90vh;">
+    <img src="${entry.photo}" style="max-width:90vw;max-height:85vh;border-radius:8px;object-fit:contain;">
+    <div style="text-align:center;color:#fff;margin-top:10px;font-size:14px;">${entry.name} — Click anywhere to close</div>
+    <button onclick="event.stopPropagation();removePhoto(${id});document.body.removeChild(this.closest('[style*=fixed]'));" style="position:absolute;top:-10px;right:-10px;background:#c0392b;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:16px;">×</button>
+  </div>`;
+  overlay.onclick = () => document.body.removeChild(overlay);
+  document.body.appendChild(overlay);
+}
+
+function removePhoto(id) {
+  const entry = data.find(d=>d.id===id);
+  if(entry) { entry.photo = ''; saveAll(); filterTable(); showToast("Photo removed"); }
+}
+
+// ─── Inline Name Edit ────────────────────────────────────────
+function startNameEdit(id) {
+  const display = document.getElementById("namedisplay-"+id);
+  const input = document.getElementById("nameinput-"+id);
+  if(!display || !input) return;
+  display.style.display = "none";
+  input.style.display = "block";
+  input.focus();
+  input.select();
+}
+
+function commitNameEdit(id, value) {
+  const val = value.trim();
+  const display = document.getElementById("namedisplay-"+id);
+  const input = document.getElementById("nameinput-"+id);
+  if(!val) { cancelNameEdit(id); return; }
+  const entry = data.find(d=>d.id===id);
+  if(entry && val !== entry.name) {
+    entry.name = val;
+    saveAll();
+    filterTable();
+  } else {
+    if(display) display.style.display = "";
+    if(input) input.style.display = "none";
+  }
+}
+
+function cancelNameEdit(id) {
+  const entry = data.find(d=>d.id===id);
+  const display = document.getElementById("namedisplay-"+id);
+  const input = document.getElementById("nameinput-"+id);
+  if(entry && input) input.value = entry.name;
+  if(display) display.style.display = "";
+  if(input) input.style.display = "none";
+}
+
+// ─── Name Confirm Modal ───────────────────────────────────────
+let _nameConfirmIdx = -1;
+let _nameConfirmNewName = "";
+
+function showNameConfirm(oldName, newName, idx) {
+  _nameConfirmIdx = idx;
+  _nameConfirmNewName = newName;
+  document.getElementById("nameOld").textContent = oldName;
+  document.getElementById("nameNew").textContent = newName;
+  document.getElementById("nameConfirmOverlay").classList.add("open");
+}
+
+function resolveNameConfirm(accept) {
+  document.getElementById("nameConfirmOverlay").classList.remove("open");
+  if(accept === 'cancel') {
+    // Do nothing — close without saving any changes
+    _nameConfirmIdx = -1;
+    _nameConfirmNewName = "";
+    return;
+  }
+  if(accept && _nameConfirmIdx >= 0) {
+    data[_nameConfirmIdx].name = _nameConfirmNewName;
+  }
+  _nameConfirmIdx = -1;
+  _nameConfirmNewName = "";
+  saveAll();
+  filterTable();
+}
+
+function saveAll() {
+  // Save to localStorage immediately (instant, no network needed)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  // Save to Firebase (cloud sync for all devices)
+  if(window._fbSave) {
+    window._fbSave(data).then(ok => {
+      if(ok) {
+        showToast('☁️ Saved ✓');
+      } else {
+        showToast('💾 Saved locally — cloud sync failed');
+      }
+    }).catch(e => {
+      console.error('Save error:', e);
+      showToast('💾 Saved locally');
+    });
+  } else {
+    showToast('💾 Saved locally');
+  }
+}
+
+// ─── Render ────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('stat-total').textContent = data.length;
+  document.getElementById('stat-owned').textContent = data.filter(d=>d.status==='owned'||d.status==='new').length;
+  document.getElementById('stat-want').textContent = data.filter(d=>d.status==='want'||d.status==='priority').length;
+  document.getElementById('stat-pic').textContent = data.filter(d=>d.needPic&&(d.status==='owned'||d.status==='new')).length;
+  const total = data.reduce((sum,d)=>{ const p=parseFloat(d.purchasePrice||0); return sum+(isNaN(p)?0:p); },0);
+  document.getElementById('stat-invest').textContent = '$'+total.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+}
+
+function statusBadge(s) {
+  const map = {owned:'badge-owned',want:'badge-want',priority:'badge-priority',new:'badge-new'};
+  const label = {owned:'Own',want:'Want',priority:'⭐ Priority',new:'New'};
+  return `<span class="badge ${map[s]||'badge-want'}">${label[s]||s}</span>`;
+}
+
+function locationBadge(l) {
+  if(!l) return '<span style="color:var(--muted);font-size:12px;">—</span>';
+  const map = {USC:'Upstairs Closet',DSC:'Downstairs Closet',GC:'Guest Room Closet',NS:'Not Stored',O:'Other'};
+  return `<span class="location-badge">${l} — ${map[l]||l}</span>`;
+}
+
+let filtered = [];
+function filterTable() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const st = document.getElementById('filterStatus').value;
+  const loc = document.getElementById('filterLocation').value;
+  const pic = document.getElementById('filterPic').value;
+  filtered = data.filter(d => {
+    if(q && !d.name.toLowerCase().includes(q) && !(d.notes||'').toLowerCase().includes(q) && !(d.description||'').toLowerCase().includes(q)) return false;
+    if(st && d.status!==st) return false;
+    if(loc && d.location!==loc) return false;
+    if(pic==='yes' && !d.needPic) return false;
+    if(pic==='no' && d.needPic) return false;
+    const upcMpnFilter = (document.getElementById('filterUpcMpn')||{}).value||'';
+    const hasUpc = !!(d.upc && d.upc.trim());
+    const hasMpn = !!(d.mpn && d.mpn.trim());
+    if(upcMpnFilter==='has_both' && !(hasUpc && hasMpn)) return false;
+    if(upcMpnFilter==='has_upc' && !hasUpc) return false;
+    if(upcMpnFilter==='has_mpn' && !hasMpn) return false;
+    if(upcMpnFilter==='missing_upc' && hasUpc) return false;
+    if(upcMpnFilter==='missing_mpn' && hasMpn) return false;
+    if(upcMpnFilter==='missing_both' && (hasUpc || hasMpn)) return false;
+    return true;
+  });
+  renderTable();
+}
+
+function renderTable() {
+  updateStats();
+  setTimeout(fixStickyHeader, 50);
+  const tbody = document.getElementById('tableBody');
+  if(!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="18" style="text-align:center;padding:40px;color:var(--muted)">No results found.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map((d, i) => `
+    <tr id="row-${d.id}">
+      <td class="td-num">${i+1}</td>
+      <td class="thumb-cell">
+        ${d.photo
+          ? `<img src="${d.photo}" class="thumb-img" onclick="viewPhoto(${d.id})" title="Click to view">`
+          : `<div class="thumb-placeholder" onclick="triggerPhotoUpload(${d.id})" title="Upload photo">📷</div>`}
+        <input type="file" accept="image/*" id="photoinput-${d.id}" style="display:none" onchange="handlePhotoUpload(${d.id},this)">
+      </td>
+      <td>
+        <input class="editable" type="text" placeholder="Manufacturer"
+          value="${escHtml(d.manufacturer||'')}"
+          onchange="updateField(${d.id},'manufacturer',this.value)"
+          style="width:120px;font-size:12px;" />
+      </td>
+      <td>
+        <div class="firearm-name" style="display:flex;align-items:center;gap:6px;">
+          <span class="name-display" id="namedisplay-${d.id}" onclick="startNameEdit(${d.id})" title="Click to edit" style="cursor:pointer;border-bottom:1px dashed var(--border);">${escHtml(d.name)}</span>
+          ${d.needPic && (d.status==='owned'||d.status==='new') ? '<span class="pic-needed" title="Photo needed"></span>' : ''}
+        </div>
+        <input class="editable name-edit-input" id="nameinput-${d.id}" type="text"
+          value="${escHtml(d.name)}"
+          style="display:none;width:100%;font-weight:500;font-size:13.5px;"
+          onblur="commitNameEdit(${d.id}, this.value)"
+          onkeydown="if(event.key==='Enter'){this.blur();}if(event.key==='Escape'){cancelNameEdit(${d.id});}" />
+        ${d.description ? `<div class="firearm-desc" style="margin-top:3px;">${escHtml(d.description.substring(0,100))}${d.description.length>100?'…':''}</div>` : ''}
+      </td>
+
+      <td>
+        <select class="inline-select status-select" onchange="updateField(${d.id},'status',this.value)">
+          <option value="owned" ${d.status==='owned'?'selected':''}>Own</option>
+          <option value="want" ${d.status==='want'?'selected':''}>Want</option>
+          <option value="priority" ${d.status==='priority'?'selected':''}>⭐ Priority</option>
+          <option value="new" ${d.status==='new'?'selected':''}>New</option>
+        </select>
+      </td>
+      <td>
+        <select class="inline-select location-select" onchange="updateField(${d.id},'location',this.value)">
+          <option value="" ${!d.location?'selected':''}>— None —</option>
+          <option value="USC" ${d.location==='USC'?'selected':''}>USC — Upstairs Closet</option>
+          <option value="DSC" ${d.location==='DSC'?'selected':''}>DSC — Downstairs Closet</option>
+          <option value="GC" ${d.location==='GC'?'selected':''}>GC — Guest Room Closet</option>
+          <option value="NS" ${d.location==='NS'?'selected':''}>NS — Not Stored</option>
+          <option value="O" ${d.location==='O'?'selected':''}>O — Other</option>
+        </select>
+      </td>
+      <td>
+        <input class="editable" type="text" placeholder="UPC"
+          value="${escHtml(d.upc||'')}"
+          data-original-upc="${escHtml(d.upc||'')}"
+          id="upcbtn-${d.id}"
+          onchange="updateField(${d.id},'upc',this.value)"
+          onblur="(function(el,id){ const val=el.value.trim().replace(/[^0-9]/g,''); const orig=el.getAttribute('data-original-upc'); if(val && val!==orig){ updateField(id,'upc',val); el.value=val; el.setAttribute('data-original-upc',val); lookupByUPC(id,val); } })(this,${d.id})"
+          onkeydown="if(event.key==='Enter'){ event.preventDefault(); this.blur(); }"
+          style="width:130px;font-family:'JetBrains Mono',monospace;font-size:12px;" />
+        <button class="upc-btn" onclick="lookupUPC(${d.id})" style="margin-top:3px;">🔍 AI Lookup</button>
+      </td>
+      <td>
+        <input class="editable" type="text" placeholder="MPN"
+          value="${escHtml(d.mpn||'')}"
+          data-original-mpn="${escHtml(d.mpn||'')}"
+          onchange="updateField(${d.id},'mpn',this.value)"
+          onblur="(function(el,id){ const val=el.value.trim(); const orig=el.getAttribute('data-original-mpn'); if(val && val!==orig){ updateField(id,'mpn',val); el.setAttribute('data-original-mpn',val); } })(this,${d.id})"
+          style="width:120px;font-family:'JetBrains Mono',monospace;font-size:12px;" />
+      </td>
+      <td>
+        <div class="combo-wrap" id="combowrap-${d.id}">
+          <input class="combo-input" type="text" placeholder="— Type —"
+            value="${escHtml(d.gunType||'')}"
+            id="comboinput-${d.id}"
+            autocomplete="off"
+            onkeyup="filterCombo(${d.id},this.value)"
+            onfocus="openCombo(${d.id})"
+            onblur="closeComboDelayed(${d.id},this.value)" />
+          <span class="combo-arrow">▼</span>
+          <div class="combo-dropdown" id="combodrop-${d.id}">
+            ${buildTypeOptions(d.gunType||'')}
+          </div>
+        </div>
+      </td>
+      <td>
+        <input class="editable" type="text" placeholder="e.g. 9mm"
+          value="${escHtml(d.caliber||'')}"
+          onchange="updateField(${d.id},'caliber',this.value)"
+          style="width:85px;font-size:12px;" />
+      </td>
+      <td>
+        <div class="serial-wrap">
+          <input class="editable serial-input" type="text" placeholder="Serial #"
+            value="${escHtml(d.serial||'')}"
+            onchange="updateField(${d.id},'serial',this.value)"
+            autocomplete="off" />
+        </div>
+      </td>
+
+            <td>
+        <div style="display:flex;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden;width:110px;">
+          <span style="padding:4px 5px 4px 8px;color:var(--muted);font-size:13px;font-weight:600;background:var(--surface2);border-right:1px solid var(--border);user-select:none;">$</span>
+          <input class="editable" type="number" placeholder="0.00" step="0.01"
+            value="${escHtml(d.purchasePrice||'')}"
+            onchange="updateField(${d.id},'purchasePrice',this.value)"
+            style="width:72px;border:none;border-radius:0;padding:4px 6px;font-size:12px;" />
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">
+          ${buildDateSelect(d.id, d.purchaseDate||'')}
+        </div>
+      </td>
+      <td>
+        <div class="inline-edit-cell" onclick="startInlineEdit(${d.id},'priceHistory',this)" title="Click to edit">
+          <span class="inline-val">${escHtml(getFirstPrice(d.priceHistory||d.notes||''))}</span>
+          <span class="inline-edit-icon">✏️</span>
+        </div>
+        <textarea class="editable inline-textarea" style="display:none;" rows="2"
+          onblur="commitInlineEdit(${d.id},'priceHistory',this)"
+          onkeydown="if(event.key==='Escape'){cancelInlineEdit(this)}"
+        >${escHtml(d.priceHistory||d.notes||'')}</textarea>
+      </td>
+      <td>
+        <div class="inline-edit-cell" onclick="startInlineEdit(${d.id},'userNotes',this)" title="Click to edit">
+          <span class="inline-val">${escHtml((d.userNotes||'').substring(0,80))}${(d.userNotes||'').length>80?'…':''}</span>
+          <span class="inline-edit-icon">✏️</span>
+        </div>
+        <textarea class="editable inline-textarea" style="display:none;" rows="2"
+          onblur="commitInlineEdit(${d.id},'userNotes',this)"
+          onkeydown="if(event.key==='Escape'){cancelInlineEdit(this)}"
+        >${escHtml(d.userNotes||'')}</textarea>
+      </td>
+      <td>
+        <select class="inline-select" style="min-width:100px;" onchange="updateField(${d.id},'needPic',this.value==='yes')">
+          <option value="yes" ${d.needPic?'selected':''}>Need Pic</option>
+          <option value="no" ${!d.needPic?'selected':''}>Have Pic</option>
+        </select>
+      </td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" onclick="openEditModal(${d.id})" title="Edit">✏️</button>
+          <button class="icon-btn del" onclick="deleteEntry(${d.id})" title="Delete">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ─── Date Input Builder ───────────────────────────────────────
+// Converts stored YYYY-MM-DD to display MM/DD/YYYY
+function toDisplayDate(stored) {
+  if(!stored) return '';
+  const p = stored.split('-');
+  if(p.length===3 && p[0].length===4) return p[1]+'/'+p[2]+'/'+p[0];
+  return stored;
+}
+// Converts typed MM/DD/YYYY or M/D/YYYY or M/D/YY to YYYY-MM-DD
+function parseTypedDate(str) {
+  if(!str) return '';
+  str = str.trim();
+  // Handle YYYY-MM-DD passthrough (from calendar picker)
+  if(/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  // Handle M/D/YY or M/D/YYYY or MM/DD/YYYY or MM/DD/YY
+  const m = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if(m) {
+    let mo=m[1].padStart(2,'0'), dy=m[2].padStart(2,'0'), yr=m[3];
+    if(yr.length===2) yr = parseInt(yr)<50 ? '20'+yr : '19'+yr;
+    return yr+'-'+mo+'-'+dy;
+  }
+  return str;
+}
+
+function buildDateSelect(id, dateStr) {
+  const display = toDisplayDate(dateStr);
+  return `
+    <div style="display:flex;gap:3px;align-items:center;position:relative;">
+      <input type="text" class="editable date-text-input" placeholder="MM/DD/YYYY"
+        value="${display}"
+        data-stored="${dateStr||''}"
+        style="width:100px;font-size:11px;padding:3px 5px;font-family:'JetBrains Mono',monospace;"
+        onblur="commitDateText(${id}, this)"
+        onkeydown="if(event.key==='Enter')this.blur();" />
+      <div style="position:relative;display:inline-block;">
+        <button type="button" title="Pick from calendar"
+          style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;font-size:13px;line-height:1;position:relative;z-index:1;">📅</button>
+        <input type="date" id="dathid-${id}"
+          value="${dateStr||''}"
+          style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;"
+          onchange="commitDateCal(${id}, this)" />
+      </div>
+    </div>`;
+}
+
+function commitDateText(id, el) {
+  const parsed = parseTypedDate(el.value);
+  const display = toDisplayDate(parsed);
+  el.value = display || el.value;
+  el.setAttribute('data-stored', parsed);
+  const entry = data.find(d=>d.id===id);
+  if(entry) { entry.purchaseDate = parsed; saveAll(); }
+}
+
+function commitDateCal(id, el) {
+  // Strip any 'm' suffix added for mobile card IDs
+  const realId = typeof id === 'string' ? parseInt(id) : id;
+  const entry = data.find(d=>d.id===realId);
+  if(entry) {
+    entry.purchaseDate = el.value;
+    saveAll();
+    filterTable();
+  }
+}
+
+
+function fixStickyHeader() {
+  // Measure actual stacked sticky heights and set thead offset dynamically
+  const header = document.querySelector('.header');
+  const legend = document.querySelector('.legend');
+  const toolbar = document.querySelector('.toolbar');
+  if(!header || !legend || !toolbar) return;
+  const total = header.offsetHeight + legend.offsetHeight + toolbar.offsetHeight;
+  document.documentElement.style.setProperty('--thead-top', total + 'px');
+  // Also update sticky tops
+  legend.style.top = header.offsetHeight + 'px';
+  toolbar.style.top = (header.offsetHeight + legend.offsetHeight) + 'px';
+}
+
+// ─── Gun Type Combo Box ──────────────────────────────────────
+const GUN_TYPES = ['Handgun','Revolver','Rifle','Shotgun','Bolt Action','Lever Action','Bullpup','PCC','AR Pistol','Suppressor','Optic','Accessory','Other'];
+
+function buildTypeOptions(current, filter='') {
+  const types = filter
+    ? GUN_TYPES.filter(t => t.toLowerCase().includes(filter.toLowerCase()))
+    : GUN_TYPES;
+  // If current value isn't in the list, add it at top
+  if(current && !GUN_TYPES.includes(current)) types.unshift(current);
+  return types.map(t =>
+    `<div class="combo-option${t===current?' highlighted':''}" onmousedown="selectComboOption(event,this,'${t}')">${t}</div>`
+  ).join('');
+}
+
+function openCombo(id) {
+  const drop = document.getElementById('combodrop-'+id);
+  const input = document.getElementById('comboinput-'+id);
+  if(!drop || !input) return;
+  // Close all other open dropdowns
+  document.querySelectorAll('.combo-dropdown.open').forEach(d => { if(d.id !== 'combodrop-'+id) d.classList.remove('open'); });
+  const entry = data.find(d=>d.id===id);
+  drop.innerHTML = buildTypeOptions(entry ? entry.gunType||'' : '', '');
+  drop.classList.add('open');
+}
+
+function filterCombo(id, val) {
+  const drop = document.getElementById('combodrop-'+id);
+  if(!drop) return;
+  const entry = data.find(d=>d.id===id);
+  drop.innerHTML = buildTypeOptions(entry ? entry.gunType||'' : '', val);
+  drop.classList.add('open');
+}
+
+function selectComboOption(e, el, val) {
+  e.preventDefault();
+  const wrap = el.closest('.combo-wrap');
+  if(!wrap) return;
+  const id = parseInt(wrap.id.replace('combowrap-',''));
+  const input = document.getElementById('comboinput-'+id);
+  if(input) input.value = val;
+  updateField(id, 'gunType', val);
+  document.getElementById('combodrop-'+id).classList.remove('open');
+}
+
+function closeComboDelayed(id, val) {
+  setTimeout(() => {
+    const drop = document.getElementById('combodrop-'+id);
+    if(drop) drop.classList.remove('open');
+    // Save whatever was typed even if not in list
+    updateField(id, 'gunType', val);
+  }, 200);
+}
+
+// Close combos on outside click
+document.addEventListener('click', e => {
+  if(!e.target.closest('.combo-wrap')) {
+    document.querySelectorAll('.combo-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});
+
+function escHtml(s) {
+  if(s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function updateField(id, field, value) {
+  const entry = data.find(d=>d.id===id);
+  if(entry) { entry[field] = value; saveAll(); filterTable(); }
+}
+
+// ─── Sort ──────────────────────────────────────────────────────
+function getFirstPrice(str) {
+  if(!str) return '';
+  // Extract first price-like value from notes string
+  const match = str.match(/\$[\d,]+\.?\d*/);
+  return match ? match[0] : str.split(',')[0].trim().substring(0,30);
+}
+
+function startInlineEdit(id, field, cell) {
+  const val = cell.querySelector('.inline-val');
+  const ta = cell.nextElementSibling;
+  if(!val || !ta) return;
+  cell.style.display = 'none';
+  ta.style.display = 'block';
+  ta.focus();
+}
+
+function commitInlineEdit(id, field, ta) {
+  const cell = ta.previousElementSibling;
+  updateField(id, field, ta.value);
+  ta.style.display = 'none';
+  if(cell) cell.style.display = '';
+  filterTable();
+}
+
+function cancelInlineEdit(ta) {
+  const cell = ta.previousElementSibling;
+  ta.style.display = 'none';
+  if(cell) cell.style.display = '';
+}
+
+function sortTable(col) {
+  if(sortCol===col) sortDir *= -1; else { sortCol=col; sortDir=1; }
+  // Update sort arrow indicators
+  document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '');
+  const th = document.getElementById('th-'+col);
+  if(th) th.querySelector('.sort-arrow').textContent = sortDir===1 ? ' ▲' : ' ▼';
+  data.sort((a,b) => {
+    let av = a[col]||'', bv = b[col]||'';
+    if(col==='purchasePrice') { av=parseFloat(av)||0; bv=parseFloat(bv)||0; }
+    if(col==='purchaseDate') { av=av?new Date(av).getTime():0; bv=bv?new Date(bv).getTime():0; return (av-bv)*sortDir; }
+    if(typeof av==='string') return av.localeCompare(bv)*sortDir;
+    return (av-bv)*sortDir;
+  });
+  filterTable();
+}
+
+// ─── Modal ────────────────────────────────────────────────────
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'ADD FIREARM';
+  ['fName','fDesc','fUPC','fMPN','fPurchasePrice','fPurchaseDateText',
+   'fManufacturer','fGunType','fCaliber','fSerial','fPriceHistory'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value='';
+  });
+  ['fPurchaseDateCalHid','fPhotoData'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value='';
+  });
+  // Reset lookup tracking
+  const upcEl = document.getElementById('fUPC');
+  if(upcEl) upcEl.setAttribute('data-original-upc','');
+  const mpnEl = document.getElementById('fMPN');
+  if(mpnEl) mpnEl.setAttribute('data-original-mpn','');
+  // Remove any old name suggestion
+  const sug = document.getElementById('fNameSuggest');
+  if(sug) sug.remove();
+  document.getElementById('fStatus').value='want';
+  document.getElementById('fLocation').value='';
+  document.getElementById('fNeedPic').value='yes';
+  clearModalPhoto();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function openEditModal(id) {
+  const d = data.find(x=>x.id===id);
+  if(!d) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'EDIT FIREARM';
+  document.getElementById('fName').value = d.name||'';
+  document.getElementById('fManufacturer').value = d.manufacturer||'';
+  document.getElementById('fStatus').value = d.status||'want';
+  document.getElementById('fLocation').value = d.location||'';
+  document.getElementById('fUPC').value = d.upc||'';
+  document.getElementById('fMPN').value = d.mpn||'';
+  document.getElementById('fGunType').value = d.gunType||'';
+  document.getElementById('fCaliber').value = d.caliber||'';
+  document.getElementById('fSerial').value = d.serial||'';
+  document.getElementById('fPurchasePrice').value = d.purchasePrice||'';
+  document.getElementById('fPurchaseDateText').value = toDisplayDate(d.purchaseDate||'');
+  const calHid = document.getElementById('fPurchaseDateCalHid');
+  if(calHid) calHid.value = d.purchaseDate||'';
+  document.getElementById('fNeedPic').value = d.needPic ? 'yes' : 'no';
+  document.getElementById('fPriceHistory').value = d.priceHistory||d.notes||'';
+  document.getElementById('fDesc').value = d.userNotes||d.description||'';
+  // Photo preview
+  const photoData = document.getElementById('fPhotoData');
+  if(photoData) photoData.value = d.photo||'';
+  const preview = document.getElementById('fPhotoPreview');
+  const removeBtn = document.getElementById('fPhotoRemoveBtn');
+  if(d.photo && preview) {
+    preview.innerHTML = `<img src="${d.photo}" style="width:100%;height:100%;object-fit:cover;">`;
+    if(removeBtn) removeBtn.style.display='';
+  } else {
+    if(preview) preview.innerHTML='📷';
+    if(removeBtn) removeBtn.style.display='none';
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function saveEntry() {
+  const name = document.getElementById('fName').value.trim();
+  if(!name) { alert('Firearm name is required.'); return; }
+  const photoData = document.getElementById('fPhotoData').value;
+  const entry = {
+    name,
+    manufacturer: document.getElementById('fManufacturer').value.trim(),
+    status: document.getElementById('fStatus').value,
+    location: document.getElementById('fLocation').value,
+    upc: document.getElementById('fUPC').value.trim(),
+    mpn: document.getElementById('fMPN').value.trim(),
+    gunType: document.getElementById('fGunType').value.trim(),
+    caliber: document.getElementById('fCaliber').value.trim(),
+    serial: document.getElementById('fSerial').value.trim(),
+    purchasePrice: document.getElementById('fPurchasePrice').value,
+    purchaseDate: parseTypedDate(document.getElementById('fPurchaseDateText').value) || document.getElementById('fPurchaseDateCalHid').value || '',
+    needPic: document.getElementById('fNeedPic').value === 'yes',
+    priceHistory: document.getElementById('fPriceHistory').value.trim(),
+    userNotes: document.getElementById('fDesc').value.trim(),
+    description: '',
+    notes: '',
+  };
+  if(photoData) entry.photo = photoData;
+  if(editingId) {
+    const idx = data.findIndex(d=>d.id===editingId);
+    if(idx>=0) data[idx] = {...data[idx], ...entry};
+  } else {
+    data.push({id: Date.now(), num: data.length+1, ...entry});
+  }
+  saveAll();
+  filterTable();
+  closeModal();
+}
+
+function deleteEntry(id) {
+  const entry = data.find(d=>d.id===id);
+  if(!entry) return;
+  showDeleteConfirm(id, entry.name);
+}
+
+function showDeleteConfirm(id, name) {
+  document.getElementById('deleteConfirmName').textContent = name;
+  document.getElementById('deleteConfirmOverlay').dataset.pendingId = id;
+  document.getElementById('deleteConfirmOverlay').classList.add('open');
+}
+
+function resolveDeleteConfirm(confirmed) {
+  const overlay = document.getElementById('deleteConfirmOverlay');
+  overlay.classList.remove('open');
+  if(confirmed) {
+    const id = parseInt(overlay.dataset.pendingId);
+    data = data.filter(d=>d.id!==id);
+    saveAll();
+    filterTable();
+    showToast('Entry deleted');
+  }
+}
+
+// ─── Lookup by UPC → populate name, MPN, description ──────────
+async function lookupByUPC(id, upcVal) {
+  const entry = data.find(d=>d.id===id);
+  if(!entry || !upcVal) return;
+  // Check if another entry already has this UPC — reuse its data
+  const existing = data.find(d => d.id !== id && d.upc === upcVal && (d.manufacturer || d.gunType));
+  if(existing) {
+    const idx = data.findIndex(d=>d.id===id);
+    if(idx>=0) {
+      if(existing.manufacturer && !data[idx].manufacturer) data[idx].manufacturer = existing.manufacturer;
+      if(existing.gunType && !data[idx].gunType) data[idx].gunType = existing.gunType;
+      if(existing.caliber && !data[idx].caliber) data[idx].caliber = existing.caliber;
+      if(existing.mpn && !data[idx].mpn) data[idx].mpn = existing.mpn;
+      saveAll(); filterTable();
+      showToast("✅ Filled from existing entry: " + existing.name);
+      return;
+    }
+  }
+  if(_aiSearching) { showToast("⏳ Search in progress, please wait..."); return; }
+  _aiSearching = true;
+  const lockTimer2 = setTimeout(() => { _aiSearching = false; }, 30000);
+  const btn = document.getElementById("upcbtn-"+id);
+  if(btn) btn.placeholder = "Searching...";
+  // Safety timeout - release lock after 30 seconds no matter what
+  const lockTimer = setTimeout(() => { _aiSearching = false; }, 30000);
+  try {
+    const prompt = `You are a firearms expert. For the firearm with UPC: "${upcVal}" (name: "${entry.name}"), return ONLY this JSON with no markdown or explanation:
+{"official_name":"","manufacturer":"","mpn":"","description":"","gunType":"","caliber":""}
+gunType must be exactly one of: Handgun, Revolver, Rifle, Shotgun, Bolt Action, Lever Action, Bullpup, PCC, AR Pistol, Suppressor, Optic, Accessory, Other
+caliber example: 9mm, .45 ACP, 12 Gauge, 5.56 NATO
+manufacturer example: Glock, Smith & Wesson, Heckler & Koch, Colt`;
+    const text = await callClaude(prompt);
+    let p = {};
+    try { p = JSON.parse(text.replace(/```json|```/g,'').trim()); } catch(e) {}
+    const idx = data.findIndex(d=>d.id===id);
+    if(idx < 0) return;
+    if(p.manufacturer) data[idx].manufacturer = p.manufacturer;
+    if(p.mpn) data[idx].mpn = p.mpn;
+    if(p.description) { data[idx].description = p.description; data[idx]._descVerified = true; }
+    if(p.gunType) data[idx].gunType = p.gunType;
+    if(p.caliber) data[idx].caliber = p.caliber;
+    saveAll();
+    filterTable();
+    // Always show name confirm if official name found
+    if(p.official_name && p.official_name.length > 3) {
+      showNameConfirm(entry.name, p.official_name, idx);
+    } else {
+      showToast("Lookup complete" + (p.manufacturer ? " — " + p.manufacturer : ""));
+    }
+  } catch(e) {
+    console.error("UPC lookup error:", e.message);
+    showToast("❌ " + (e.message||"Lookup failed").substring(0,60));
+  }
+  if(btn) btn.placeholder = "UPC";
+}
+
+
+// ─── AI Lookup: by Name or MPN ───────────────────────────────
+async function lookupUPC(id) {
+  const entry = data.find(d=>d.id===id);
+  if(!entry) return;
+  if(_aiSearching) { showToast("⏳ Search in progress, please wait..."); return; }
+  _aiSearching = true;
+  const lockTimer2 = setTimeout(() => { _aiSearching = false; }, 30000);
+  const btn = document.getElementById("upcbtn-"+id);
+  if(btn) btn.innerHTML = '<span class="loading-spin"></span> Searching...';
+  try {
+    const hint = entry.mpn ? `MPN: "${entry.mpn}"` : `Name: "${entry.name}"`;
+    const prompt = `You are a firearms expert. For this firearm — ${hint} (name: "${entry.name}"), return ONLY this JSON with no markdown or explanation:
+{"upc":"","official_name":"","manufacturer":"","mpn":"","description":"","gunType":"","caliber":""}
+upc: exact 12-digit UPC barcode — leave empty string if not 100% certain
+gunType must be exactly one of: Handgun, Revolver, Rifle, Shotgun, Bolt Action, Lever Action, Bullpup, PCC, AR Pistol, Suppressor, Optic, Accessory, Other
+caliber example: 9mm, .45 ACP, 12 Gauge, 5.56 NATO
+manufacturer example: Glock, Smith & Wesson, Heckler & Koch, Colt`;
+    const text = await callClaude(prompt);
+    let p = {};
+    try { p = JSON.parse(text.replace(/```json|```/g,'').trim()); } catch(e) {}
+    const idx = data.findIndex(d=>d.id===id);
+    if(idx < 0) return;
+    if(p.upc && p.upc.replace(/[^0-9]/g,'').length >= 10) { data[idx].upc = p.upc.replace(/[^0-9]/g,''); data[idx]._upcVerified = true; }
+    if(p.mpn && !data[idx].mpn) data[idx].mpn = p.mpn;
+    if(p.manufacturer) data[idx].manufacturer = p.manufacturer;
+    if(p.description) { data[idx].description = p.description; data[idx]._descVerified = true; }
+    if(p.gunType) data[idx].gunType = p.gunType;
+    if(p.caliber) data[idx].caliber = p.caliber;
+    saveAll();
+    filterTable();
+    // Always show name confirm if official name found
+    if(p.official_name && p.official_name.length > 3) {
+      showNameConfirm(entry.name, p.official_name, idx);
+    } else {
+      let msg = [];
+      if(data[idx].upc) msg.push("UPC ✓");
+      if(data[idx].manufacturer) msg.push(data[idx].manufacturer);
+      if(data[idx].gunType) msg.push(data[idx].gunType);
+      if(data[idx].caliber) msg.push(data[idx].caliber);
+      showToast(msg.length ? msg.join(' · ') : 'Lookup complete');
+    }
+  } catch(e) {
+    console.error("AI lookup error:", e.message);
+    showToast("❌ " + (e.message||"Lookup failed").substring(0,60));
+  }
+  clearTimeout(lockTimer2);
+  _aiSearching = false;
+  if(btn) btn.innerHTML = "🔍 AI Lookup";
+}
+
+
+// ─── Export CSV ───────────────────────────────────────────────
+function exportCSV() {
+  const headers = ['#','Name','Type','Caliber','Manufacturer','Status','Location','UPC','MPN','Description','Purchase Price','Purchase Date','Need Photo','Price History','Notes'];
+  const rows = data.map((d,i) => [
+    i+1, d.name, d.gunType||'', d.caliber||'', d.manufacturer||'', d.status, d.location, d.upc||'', d.mpn||'', d.description||'', d.purchasePrice||'', d.purchaseDate||'', d.needPic?'Yes':'No', d.priceHistory||'', d.userNotes||''
+  ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'firearm_inventory.csv';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+  showToast('CSV exported ✓');
+}
+
+// ─── Toast ───────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ─── Bulk Lookup ─────────────────────────────────────────────
+let bulkCancelled = false;
+
+function cancelBulkLookup() {
+  bulkCancelled = true;
+  document.getElementById('bulkProgressOverlay').classList.remove('open');
+}
+
+async function startBulkLookup() {
+  // Find entries that have UPC or MPN but are missing manufacturer, type, or caliber
+  const targets = data.filter(d =>
+    (d.upc || d.mpn) &&
+    (!d.manufacturer || !d.gunType || !d.caliber)
+  );
+
+  if(!targets.length) {
+    showToast('No entries need bulk lookup — all have manufacturer, type & caliber!');
+    return;
+  }
+
+  bulkCancelled = false;
+  const overlay = document.getElementById('bulkProgressOverlay');
+  const statusText = document.getElementById('bulkStatusText');
+  const progressBar = document.getElementById('bulkProgressBar');
+  const logDiv = document.getElementById('bulkResultLog');
+  const cancelBtn = document.getElementById('bulkCancelBtn');
+  const doneBtn = document.getElementById('bulkDoneBtn');
+
+  overlay.classList.add('open');
+  logDiv.innerHTML = '';
+  cancelBtn.style.display = '';
+  doneBtn.style.display = 'none';
+
+  let completed = 0;
+  let filled = 0;
+
+  for(const entry of targets) {
+    if(bulkCancelled) break;
+
+    statusText.textContent = `Looking up ${completed + 1} of ${targets.length}: ${entry.name.substring(0,40)}...`;
+    progressBar.style.width = Math.round((completed / targets.length) * 100) + '%';
+
+    try {
+      const searchKey = entry.upc || entry.mpn;
+      const searchType = entry.upc ? 'UPC' : 'MPN';
+      const prompt = `Firearm ${searchType}: "${searchKey}", Name: "${entry.name}". Return ONLY JSON, no markdown:
+{"manufacturer":"company name e.g. Glock","gunType":"Handgun|Revolver|Rifle|Shotgun|Bolt Action|Lever Action|Bullpup|PCC|AR Pistol|Suppressor|Optic|Accessory|Other","caliber":"e.g. 9mm","mpn":"${entry.mpn||''}","description":"brief: action, barrel, capacity"}`;
+
+      const text = await callClaude(prompt);
+      let parsed = {};
+      try { parsed = JSON.parse(text.replace(/```json|```/g,'').trim()); } catch(e) {}
+
+      const idx = data.findIndex(d=>d.id===entry.id);
+      if(idx>=0) {
+        let updates = [];
+        if(parsed.manufacturer && !data[idx].manufacturer) { data[idx].manufacturer = parsed.manufacturer; updates.push('Mfr'); }
+        if(parsed.gunType && !data[idx].gunType) { data[idx].gunType = parsed.gunType; updates.push('Type'); }
+        if(parsed.caliber && !data[idx].caliber) { data[idx].caliber = parsed.caliber; updates.push('Cal'); }
+        if(parsed.mpn && !data[idx].mpn) { data[idx].mpn = parsed.mpn; updates.push('MPN'); }
+        if(parsed.description && !data[idx].description) { data[idx].description = parsed.description; updates.push('Desc'); }
+
+        if(updates.length) {
+          filled++;
+          logDiv.innerHTML += `<div style="color:var(--green);">✓ ${entry.name.substring(0,35)} — ${updates.join(', ')}</div>`;
+        } else {
+          logDiv.innerHTML += `<div>— ${entry.name.substring(0,35)} (no new data)</div>`;
+        }
+        logDiv.scrollTop = logDiv.scrollHeight;
+        saveAll();
+      }
+    } catch(e) {
+      console.error("Bulk lookup failed for " + entry.name + ":", e.message);
+      logDiv.innerHTML += `<div style="color:var(--red);">✗ ${entry.name.substring(0,35)} — ${e.message.substring(0,60)}</div>`;
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    completed++;
+    // Small delay to avoid rate limiting
+    await new Promise(r => setTimeout(r, 800));
+  }
+
+  progressBar.style.width = '100%';
+  statusText.textContent = bulkCancelled
+    ? `Cancelled after ${completed} entries — ${filled} updated`
+    : `Complete! ${completed} entries checked, ${filled} updated`;
+  cancelBtn.style.display = 'none';
+  doneBtn.style.display = '';
+  filterTable();
+}
+
+// ─── Export / Import JSON Backup ─────────────────────────────
+function exportJSON() {
+  try {
+    const backup = {
+      version: 2,
+      exported: new Date().toISOString(),
+      count: data.length,
+      data: data
+    };
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const date = new Date().toISOString().slice(0,10);
+    a.download = 'armory_backup_' + date + '.json';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    // Cleanup after short delay
+    setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1000);
+    showToast('Backup saved — ' + data.length + ' entries ✓');
+  } catch(e) {
+    // Fallback: open in new tab so user can save manually
+    const backup = { version: 2, exported: new Date().toISOString(), count: data.length, data: data };
+    const json = JSON.stringify(backup, null, 2);
+    const w = window.open('', '_blank');
+    if(w) {
+      w.document.write('<pre style="font-size:11px;white-space:pre-wrap;">' + json.replace(/</g,'&lt;') + '</pre>');
+      w.document.title = 'Armory Backup — Select All & Save';
+      showToast('Backup opened in new tab — Save As to keep it');
+    }
+  }
+}
+
+// Store pending import in memory (not dataset — avoids size limits)
+let _pendingImport = [];
+
+function importJSON(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const backup = JSON.parse(e.target.result);
+      const imported = Array.isArray(backup) ? backup : (backup.data || []);
+      if(!imported.length) { showToast('No data found in file'); return; }
+      _pendingImport = imported;
+      document.getElementById('importConfirmCount').textContent = imported.length + ' entries';
+      document.getElementById('importConfirmOverlay').classList.add('open');
+    } catch(err) {
+      console.error('Import parse error:', err);
+      showToast('Invalid backup file — could not read');
+    }
+    input.value = '';
+  };
+  reader.onerror = function() { showToast('Could not read file'); };
+  reader.readAsText(file);
+}
+
+function resolveImportConfirm(mode) {
+  document.getElementById('importConfirmOverlay').classList.remove('open');
+  if(mode === 'cancel') { _pendingImport = []; return; }
+  if(!_pendingImport.length) { showToast('No data to restore'); return; }
+  if(mode === 'replace') {
+    data = _pendingImport;
+  } else if(mode === 'merge') {
+    const existingNames = new Set(data.map(d => d.name.toLowerCase().trim()));
+    const newEntries = _pendingImport.filter(d => !existingNames.has((d.name||'').toLowerCase().trim()));
+    data = [...data, ...newEntries];
+    showToast(newEntries.length + ' new entries merged ✓');
+  }
+  _pendingImport = [];
+  // Save to localStorage immediately
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  filtered = [...data];
+  renderTable();
+  // Save to Firebase
+  const count = data.length;
+  if(window._fbSave) {
+    window._fbSave(data).then(ok => {
+      showToast(ok ? '☁️ Restored ' + count + ' entries & saved to cloud ✓' : '💾 Restored ' + count + ' entries (saved locally)');
+    });
+  } else {
+    showToast('💾 Restored ' + count + ' entries ✓');
+  }
+}
+
+// ─── Auto-save on blur ────────────────────────────────────────
+document.addEventListener('focusout', e => {
+  if(e.target.classList.contains('editable')) saveAll();
+});
+
+// ─── Keyboard shortcuts ───────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') closeModal();
+  if((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); saveAll(); }
+});
+
+// ─── Clear AI-generated UPCs on load ─────────────────────────
+// clearAIGeneratedData removed — was wiping manually entered UPCs and descriptions
+
+// ─── Init ────────────────────────────────────────────────────
+async function startApp() {
+  await initData();
+  filtered = [...data];
+  renderTable();
+  // Set up real-time sync after initial load
+  if(window._fbListen) {
+    window._fbListen((remoteData) => {
+      // Only update if remote data is newer/different to avoid overwriting local edits
+      if(JSON.stringify(remoteData) !== JSON.stringify(data)) {
+        data = remoteData;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        filtered = [...data];
+        renderTable();
+        showToast('🔄 Synced from cloud');
+      }
+    });
+  }
+}
+
+window.addEventListener('resize', fixStickyHeader);
+
+// Wait for Firebase to be ready, then start
+if(window._fbReady) {
+  startApp();
+} else {
+  document.addEventListener('firebase-ready', () => startApp());
+  // Fallback: start anyway after 5 seconds if Firebase doesn't respond
+  setTimeout(() => { if(!data.length) { console.log('Firebase timeout - starting with localStorage'); startApp(); } }, 5000);
+}
+</script>
+</body>
+</html>
